@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
+  <defs><linearGradient id="sk2" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" style="stop-color:#ffcc80"/><stop offset="100%" style="stop-color:#ffe0b2"/></linearGradient></defs>
+  <rect width="1200" height="800" fill="url(#sk2)"/>
+  <rect y="500" width="1200" height="300" fill="#8d6e63"/>
+  <rect y="520" width="1200" height="280" fill="#a1887f"/>
+  <text x="600" y="300" text-anchor="middle" font-size="200">🧑‍🌾</text>
+  <text x="600" y="650" text-anchor="middle" font-family="Microsoft YaHei" font-size="28" fill="#fff" font-weight="bold">🎁 丰收时刻 · 人工精心采摘每一颗果实</text>
+</svg>

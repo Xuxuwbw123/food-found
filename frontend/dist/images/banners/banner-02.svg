@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="420" viewBox="0 0 1920 420">
+  <defs>
+    <linearGradient id="bg2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#e65100;stop-opacity:1"/>
+      <stop offset="50%" style="stop-color:#f57c00;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#ffb74d;stop-opacity:1"/>
+    </linearGradient>
+  </defs>
+  <rect width="1920" height="420" fill="url(#bg2)"/>
+  <circle cx="1600" cy="80" r="100" fill="#fff" opacity="0.1"/>
+  <!-- 圆形装饰 -->
+  <circle cx="300" cy="300" r="150" fill="#fff" opacity="0.08"/>
+  <circle cx="1700" cy="350" r="200" fill="#fff" opacity="0.06"/>
+  <!-- 文字 -->
+  <text x="160" y="220" font-family="Microsoft YaHei, sans-serif" font-size="52" font-weight="bold" fill="#fff">产地直供 · 新鲜到家</text>
+  <text x="160" y="280" font-family="Microsoft YaHei, sans-serif" font-size="28" fill="#ffffffcc">严选全国优质农产品，冷链直达您的餐桌</text>
+  <rect x="160" y="300" width="80" height="4" rx="2" fill="#fff" opacity="0.6"/>
+</svg>
