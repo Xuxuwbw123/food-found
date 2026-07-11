@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.freshtrace.unified.common.PageQuery;
 import com.freshtrace.unified.common.Result;
 import com.freshtrace.unified.entity.*;
+import com.freshtrace.unified.mapper.TraceabilityMapper;
 import com.freshtrace.unified.service.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -644,6 +645,75 @@ public class AdminController {
         fa.setAuditTime(LocalDateTime.now()); fa.setCreateTime(LocalDateTime.now());
         farmerAuditService.save(fa);
         return Result.success("已撤销农户资质", null);
+    }
+
+    // ============ 溯源批次审核 ============
+    @Autowired private TraceabilityService traceService;
+    @Autowired private TraceabilityMapper traceabilityMapper;
+    @Autowired private TraceImageService traceImageService;
+
+    @GetMapping("/trace/audit/list")
+    public Result<?> traceAuditList(PageQuery pageQuery, @RequestParam(required = false) Integer status) {
+        if (status != null && status == 0) {
+            // 待审核：查询 audit_status=0
+            return Result.success(traceabilityMapper.selectList(
+                    new LambdaQueryWrapper<Traceability>().eq(Traceability::getAuditStatus, 0)
+                            .eq(Traceability::getDeleted, 0).orderByDesc(Traceability::getCreateTime)));
+        }
+        return Result.success(traceabilityMapper.selectList(
+                new LambdaQueryWrapper<Traceability>().eq(Traceability::getDeleted, 0)
+                        .orderByDesc(Traceability::getCreateTime)));
+    }
+
+    @GetMapping("/trace/audit/detail/{id}")
+    public Result<?> traceAuditDetail(@PathVariable Long id) {
+        Traceability t = traceService.getById(id);
+        if (t == null) return Result.error(404, "溯源批次不存在");
+        Map<String, Object> data = new HashMap<>();
+        data.put("id", t.getId()); data.put("traceCode", t.getTraceCode());
+        data.put("batchNo", t.getBatchNo()); data.put("productName", t.getProductName());
+        data.put("originPlace", t.getOriginPlace()); data.put("farmName", t.getFarmName());
+        data.put("responsiblePerson", t.getResponsiblePerson());
+        data.put("auditStatus", t.getAuditStatus()); data.put("createTime", t.getCreateTime());
+        data.put("planting", traceService.list(new LambdaQueryWrapper<Traceability>())); // placeholder
+        data.put("images", traceImageService.list(new LambdaQueryWrapper<TraceImage>().eq(TraceImage::getTraceId, id)));
+        return Result.success(data);
+    }
+
+    @PutMapping("/trace/audit/approve/{id}")
+    public Result<?> traceAuditApprove(@PathVariable Long id) {
+        traceabilityMapper.updateDeletedStatus(id, 0); // ensure deleted=0
+        Traceability t = new Traceability(); t.setId(id); t.setAuditStatus(1);
+        traceService.updateById(t);
+        return Result.success("审核通过", null);
+    }
+
+    @PutMapping("/trace/audit/reject/{id}")
+    public Result<?> traceAuditReject(@PathVariable Long id) {
+        traceabilityMapper.updateDeletedStatus(id, 1); // soft delete
+        return Result.success("已拒绝", null);
+    }
+
+    // ============ 商品发布审核 ============
+    @GetMapping("/product/audit/list")
+    public Result<?> productAuditList(PageQuery pageQuery, @RequestParam(required = false) Integer status) {
+        LambdaQueryWrapper<Product> qw = new LambdaQueryWrapper<Product>().eq(Product::getDeleted, 0);
+        if (status != null) qw.eq(Product::getAuditStatus, status);
+        qw.orderByDesc(Product::getCreateTime);
+        return Result.success(productService.page(pageQuery.toPage(), qw));
+    }
+
+    @PutMapping("/product/audit/approve/{id}")
+    public Result<?> productAuditApprove(@PathVariable Long id) {
+        Product p = new Product(); p.setId(id); p.setAuditStatus(1); p.setStatus(1);
+        productService.updateById(p);
+        return Result.success("审核通过", null);
+    }
+
+    @PutMapping("/product/audit/reject/{id}")
+    public Result<?> productAuditReject(@PathVariable Long id) {
+        productService.removeById(id);
+        return Result.success("已拒绝", null);
     }
 
     // ============ 管理员账号 ============

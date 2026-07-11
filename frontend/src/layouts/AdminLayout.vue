@@ -52,6 +52,14 @@
           <el-icon><Location /></el-icon>
           <span>用户地址</span>
         </el-menu-item>
+        <el-menu-item index="/admin/trace-audit">
+          <el-icon><Document /></el-icon>
+          <span>溯源批次审核</span>
+        </el-menu-item>
+        <el-menu-item index="/admin/product-audit">
+          <el-icon><Goods /></el-icon>
+          <span>商品发布审核</span>
+        </el-menu-item>
         <el-menu-item index="/admin/trace-delete-audit">
           <el-icon><Delete /></el-icon>
           <span>溯源删除审核</span>
@@ -62,6 +70,8 @@
           <el-menu-item index="/admin/admins" v-if="false"><span>管理员账号</span></el-menu-item>
           <el-menu-item index="/admin/farmer-audit"><span>农户审核</span></el-menu-item>
           <el-menu-item index="/admin/config"><span>系统配置</span></el-menu-item>
+          <el-menu-item index="/admin/member-level"><span>会员等级配置</span></el-menu-item>
+          <el-menu-item index="/admin/points-exchange"><span>积分兑换规则</span></el-menu-item>
         </el-sub-menu>
         <el-sub-menu index="marketing">
           <template #title><el-icon><Present /></el-icon><span>营销管理</span></template>

@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.freshtrace.unified.common.PageQuery;
 import com.freshtrace.unified.common.Result;
 import com.freshtrace.unified.entity.*;
+import com.freshtrace.unified.mapper.TraceabilityMapper;
 import com.freshtrace.unified.service.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -37,7 +38,8 @@ public class TraceController {
     public Result<?> traceList(PageQuery pageQuery,
             @RequestParam(required = false) Long productId,
             @RequestParam(required = false) Integer status) {
-        LambdaQueryWrapper<Traceability> qw = new LambdaQueryWrapper<Traceability>().eq(Traceability::getDeleted, 0);
+        LambdaQueryWrapper<Traceability> qw = new LambdaQueryWrapper<Traceability>()
+                .eq(Traceability::getDeleted, 0).eq(Traceability::getAuditStatus, 1);
         if (productId != null) qw.eq(Traceability::getProductId, productId);
         if (status != null) qw.eq(Traceability::getStatus, status);
         qw.orderByDesc(Traceability::getCreateTime);
@@ -106,20 +108,22 @@ public class TraceController {
         t.setOriginPlace((String) body.get("originPlace")); t.setFarmName((String) body.get("farmName"));
         t.setResponsiblePerson((String) body.get("responsiblePerson"));
         t.setResponsiblePhone((String) body.getOrDefault("responsiblePhone", ""));
-        t.setProductId(0L); t.setStatus(1); t.setAuditStatus(1);
+        t.setProductId(0L); t.setStatus(1); t.setAuditStatus(0);
         traceService.save(t);
         return Result.success("创建成功", new HashMap<String,Object>() {{ put("id", t.getId()); put("traceCode", t.getTraceCode()); }});
     }
 
+    @Autowired private TraceabilityMapper traceabilityMapper;
+
     @PutMapping("/request-delete/{id}")
     public Result<?> requestDelete(@PathVariable Long id) {
-        traceService.update(new LambdaUpdateWrapper<Traceability>().eq(Traceability::getId, id).set(Traceability::getDeleted, 2));
+        traceabilityMapper.updateDeletedStatus(id, 2);
         return Result.success();
     }
 
     @GetMapping("/pending-deletes")
     public Result<?> pendingDeletes() {
-        return Result.success(traceService.list(new LambdaQueryWrapper<Traceability>().eq(Traceability::getDeleted, 2)));
+        return Result.success(traceabilityMapper.selectPendingDeletes());
     }
 
     @PutMapping("/approve-delete/{id}")
@@ -131,13 +135,13 @@ public class TraceController {
         harvestService.remove(new LambdaQueryWrapper<TraceHarvest>().eq(TraceHarvest::getTraceId, id));
         imageService.remove(new LambdaQueryWrapper<TraceImage>().eq(TraceImage::getTraceId, id));
         productService.remove(new LambdaQueryWrapper<Product>().eq(Product::getTraceId, id));
-        traceService.removeById(id);
+        traceabilityMapper.updateDeletedStatus(id, 1);
         return Result.success();
     }
 
     @PutMapping("/reject-delete/{id}")
     public Result<?> rejectDelete(@PathVariable Long id) {
-        traceService.update(new LambdaUpdateWrapper<Traceability>().eq(Traceability::getId, id).set(Traceability::getDeleted, 0));
+        traceabilityMapper.updateDeletedStatus(id, 0);
         return Result.success();
     }
 

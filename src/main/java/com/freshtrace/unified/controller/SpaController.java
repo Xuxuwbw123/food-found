@@ -46,9 +46,10 @@ public class SpaController {
             "/admin/dashboard", "/admin/users", "/admin/categories",
             "/admin/products", "/admin/banners", "/admin/orders",
             "/admin/comments", "/admin/payments", "/admin/after-sales",
-            "/admin/addresses", "/admin/trace-delete-audit",
+            "/admin/addresses", "/admin/trace-audit", "/admin/product-audit", "/admin/trace-delete-audit",
             "/admin/operation-logs", "/admin/admins", "/admin/farmer-audit",
-            "/admin/config", "/admin/coupons", "/admin/seckill",
+            "/admin/config", "/admin/member-level", "/admin/points-exchange",
+            "/admin/coupons", "/admin/seckill",
             "/admin/members", "/admin/marketing"
     })
     public String forwardAdmin() {

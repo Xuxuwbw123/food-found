@@ -27,7 +27,8 @@ public class AuthInterceptor implements HandlerInterceptor {
             "/api/product/recommend", "/api/product/related/",
             "/api/trace/scan/", "/api/trace/by-product/", "/api/trace/list",
             "/api/trace/detail/", "/api/farmer/list", "/api/farmer/detail/",
-            "/api/comment/product/"
+            "/api/comment/product/", "/api/marketing/product/", "/api/marketing/active",
+            "/api/points/exchange/rules"
     );
     private static final AntPathMatcher pathMatcher = new AntPathMatcher();
 
@@ -43,6 +44,10 @@ public class AuthInterceptor implements HandlerInterceptor {
         response.setHeader("Expires", "0");
 
         String url = request.getRequestURI();
+
+        // 页面请求（非API）跳过鉴权
+        String accept = request.getHeader("Accept");
+        if (accept != null && accept.contains("text/html")) return true;
 
         // 公开接口
         for (String p : PUBLIC_PATHS) {

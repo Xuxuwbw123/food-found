@@ -24,11 +24,15 @@ public class WebMvcConfig implements WebMvcConfigurer {
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(authInterceptor)
-                .addPathPatterns("/**")
+                .addPathPatterns("/api/**", "/admin/**")
                 .excludePathPatterns(
-                        "/auth/**", "/home", "/uploads/**", "/images/**",
-                        "/favicon.ico", "/assets/**", "/doc.html",
-                        "/webjars/**", "/v3/api-docs/**", "/swagger-resources/**", "/swagger-ui/**"
+                        "/auth/**",
+                        "/api/public/**", "/api/product/search", "/api/product/recommend",
+                        "/api/product/related/**", "/api/farmer/list", "/api/farmer/detail/**",
+                        "/api/trace/scan/**", "/api/trace/by-product/**", "/api/trace/list",
+                        "/api/trace/detail/**", "/api/comment/product/**",
+                        "/api/notice/unread-count", "/api/footprint/add",
+                        "/admin/statistics/**"
                 );
     }
 
