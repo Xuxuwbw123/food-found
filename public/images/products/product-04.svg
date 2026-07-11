@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" viewBox="0 0 800 800">
+  <rect width="800" height="800" fill="#fff"/>
+  <circle cx="400" cy="350" r="200" fill="#fce4ec"/>
+  <text x="400" y="300" text-anchor="middle" font-size="120">🍎</text>
+  <text x="400" y="480" text-anchor="middle" font-family="Microsoft YaHei" font-size="36" fill="#c62828" font-weight="bold">红富士苹果</text>
+  <text x="400" y="530" text-anchor="middle" font-family="Microsoft YaHei" font-size="22" fill="#999">脆甜多汁 · 产地直发</text>
+</svg>

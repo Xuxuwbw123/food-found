@@ -1,0 +1,9 @@
+<template><div class="fav-page"><div class="section-content"><h2>我的收藏</h2><el-empty v-if="!auth.isLoggedIn" description="请先登录"><el-button type="primary" @click="$router.push('/login')">去登录</el-button></el-empty><div v-else v-loading="loading" class="grid"><div v-for="p in list" :key="p.id" class="card" @click="$router.push('/product/'+p.productId)"><div class="img"><el-image :src="p.mainImage" fit="cover" style="width:100%;height:100%"><template #error><el-icon :size="50" color="#dcdfe6"><Picture/></el-icon></template></el-image></div><div class="info"><div class="name">{{p.productName}}</div><div class="price">¥{{p.price}}</div><div class="actions"><el-button link type="danger" size="small" @click.stop="remove(p.productId)">取消收藏</el-button></div></div></div></div><el-empty v-if="!loading&&list.length===0" description="暂无收藏"/></div></div></template>
+<script setup>
+import {ref,onMounted} from 'vue';import axios from 'axios';import {useAuthStore} from '../../stores/auth'
+const auth=useAuthStore();auth.restoreSession();const list=ref([]);const loading=ref(false)
+async function load(){loading.value=true;try{const r=await axios.get('/api/favorite/list');list.value=r.data.data||[]}finally{loading.value=false}}
+async function remove(pid){await axios.delete('/api/favorite/remove/'+pid);load()}
+onMounted(()=>{if(auth.isLoggedIn)load()})
+</script>
+<style scoped>.fav-page{min-height:70vh;background:#f5f6f7;padding-bottom:40px}.section-content{max-width:1100px;margin:0 auto;padding:20px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.card{background:#fff;border-radius:8px;overflow:hidden;cursor:pointer;display:flex;transition:.3s}.card:hover{box-shadow:0 4px 16px rgba(0,0,0,.1)}.img{width:120px;height:120px;background:#f5f5f5;flex-shrink:0}.info{padding:12px;flex:1}.name{font-size:14px;font-weight:600}.price{color:#f56c6c;font-size:18px;font-weight:700;margin-top:4px}.actions{margin-top:8px}h2{padding:10px 0}</style>

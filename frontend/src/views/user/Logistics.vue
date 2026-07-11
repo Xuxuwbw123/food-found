@@ -1,0 +1,7 @@
+<template><div class="logistics-page"><div class="section-content"><el-breadcrumb separator="/" style="padding:20px 0"><el-breadcrumb-item :to="{path:'/'}">首页</el-breadcrumb-item><el-breadcrumb-item :to="{path:'/orders'}">我的订单</el-breadcrumb-item><el-breadcrumb-item>物流详情</el-breadcrumb-item></el-breadcrumb><el-card shadow="never" v-loading="loading"><template #header><span>物流单号：{{ data.logisticsNo || '-' }} | 物流公司：{{ data.company || '-' }}</span></template><el-timeline v-if="data.tracks?.length"><el-timeline-item v-for="(t,i) in data.tracks" :key="t.id" :timestamp="t.trackTime" placement="top" :color="i===data.tracks.length-1?'#1a8c3a':'#409eff'"><el-card shadow="hover"><div style="font-weight:600">{{ t.station }}</div><div style="color:#666;font-size:13px">{{ t.description }}</div><div style="color:#999;font-size:12px;margin-top:4px">📍 {{ t.location }}</div></el-card></el-timeline-item></el-timeline><el-empty v-else description="暂无物流信息"/></el-card></div></div></template>
+<script setup>
+import {ref,onMounted} from 'vue';import {useRoute} from 'vue-router';import axios from 'axios'
+const route=useRoute();const data=ref({});const loading=ref(false)
+onMounted(async()=>{loading.value=true;try{const r=await axios.get('/api/order/logistics/'+route.params.orderId);data.value=r.data.data}finally{loading.value=false}})
+</script>
+<style scoped>.logistics-page{min-height:70vh;background:#f5f6f7;padding-bottom:40px}.section-content{max-width:700px;margin:0 auto;padding:0 20px}</style>

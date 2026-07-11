@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <circle cx="100" cy="80" r="55" fill="#ffebee"/>
+  <text x="100" y="95" text-anchor="middle" font-size="50">🥩</text>
+  <text x="100" y="165" text-anchor="middle" font-family="Microsoft YaHei" font-size="20" fill="#333" font-weight="bold">肉类</text>
+</svg>

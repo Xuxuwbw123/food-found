@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
+  <rect width="1200" height="800" fill="#e3f2fd"/>
+  <rect x="200" y="150" width="800" height="500" rx="20" fill="#fff" stroke="#bbdefb" stroke-width="3"/>
+  <text x="600" y="100" text-anchor="middle" font-size="120">🔬</text>
+  <text x="600" y="360" text-anchor="middle" font-family="Microsoft YaHei" font-size="32" fill="#1565c0" font-weight="bold">第三方权威检测报告</text>
+  <rect x="350" y="400" width="500" height="3" fill="#e0e0e0"/>
+  <text x="600" y="460" text-anchor="middle" font-family="Microsoft YaHei" font-size="22" fill="#666">检测结果：<tspan fill="#2e7d32" font-weight="bold">全部合格 ✅</tspan></text>
+  <text x="600" y="510" text-anchor="middle" font-family="Microsoft YaHei" font-size="22" fill="#666">农残检测：<tspan fill="#2e7d32" font-weight="bold">未检出</tspan></text>
+  <text x="600" y="560" text-anchor="middle" font-family="Microsoft YaHei" font-size="22" fill="#666">重金属：<tspan fill="#2e7d32" font-weight="bold">符合国标</tspan></text>
+</svg>

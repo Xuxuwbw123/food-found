@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
+  <rect width="1200" height="800" fill="#e8f5e9"/>
+  <rect x="50" y="400" width="1100" height="12" rx="6" fill="#c8e6c9"/>
+  <!-- 冷链车 -->
+  <rect x="500" y="300" width="280" height="160" rx="20" fill="#fff" stroke="#4caf50" stroke-width="4"/>
+  <text x="640" y="390" text-anchor="middle" font-size="60">🚛</text>
+  <text x="640" y="430" text-anchor="middle" font-family="Microsoft YaHei" font-size="18" fill="#333" font-weight="bold">冷链物流</text>
+  <text x="600" y="650" text-anchor="middle" font-family="Microsoft YaHei" font-size="28" fill="#2e7d32" font-weight="bold">📦 全程冷链配送 · 新鲜直达</text>
+</svg>
