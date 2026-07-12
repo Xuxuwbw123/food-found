@@ -35,7 +35,9 @@ public class OrderServiceImpl implements OrderService {
     @Transactional
     public Map<String, Object> create(CreateOrderDTO dto) {
         Long userId = UserContext.getUserId();
-        String orderNo = "FD" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS"));
+        // Bug #34 fix: 订单号加4位随机数防撞车
+        String orderNo = "FD" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS"))
+                + String.format("%04d", java.util.concurrent.ThreadLocalRandom.current().nextInt(10000));
         BigDecimal totalAmount = BigDecimal.ZERO;
         int totalQty = 0;
 
@@ -120,9 +122,11 @@ public class OrderServiceImpl implements OrderService {
             oi.setIsComment(0); oi.setCreateTime(LocalDateTime.now());
             orderItemMapper.insert(oi);
 
-            p.setStock(p.getStock() - item.getQuantity());
-            p.setSales((p.getSales() != null ? p.getSales() : 0) + item.getQuantity());
-            productMapper.updateById(p);
+            // Bug #33/#35 fix: 原子UPDATE扣库存
+            int affected = productMapper.deductStock(item.getProductId(), item.getQuantity());
+            if (affected == 0) {
+                throw new RuntimeException("out of stock: " + p.getProductName());
+            }
         }
 
         // Clear cart items if cart order
@@ -222,11 +226,15 @@ public class OrderServiceImpl implements OrderService {
     public void pay(Long id) {
         OrderInfo o = orderInfoMapper.selectById(id);
         if (o == null || !o.getUserId().equals(UserContext.getUserId())) throw new RuntimeException("order not found");
-        if (o.getOrderStatus() != 0) throw new RuntimeException("can only pay unpaid order");
-        o.setOrderStatus(1);
-        o.setPayType(1);
-        o.setPayTime(LocalDateTime.now());
-        orderInfoMapper.updateById(o);
+        // Bug #22 fix: 支付幂等
+        if (o.getOrderStatus() == 1) { return; }
+        if (o.getOrderStatus() != 0) throw new RuntimeException("订单状态不允许支付");
+        int updated = orderInfoMapper.update(null,
+                new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<OrderInfo>()
+                        .set(OrderInfo::getOrderStatus, 1).set(OrderInfo::getPayType, 1)
+                        .set(OrderInfo::getPayTime, LocalDateTime.now())
+                        .eq(OrderInfo::getId, id).eq(OrderInfo::getOrderStatus, 0));
+        if (updated == 0) { return; }
 
         PaymentInfo pay = paymentInfoMapper.selectOne(
                 new LambdaQueryWrapper<PaymentInfo>().eq(PaymentInfo::getOrderId, o.getId()));

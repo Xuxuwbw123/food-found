@@ -29,3 +29,7 @@ jwt:
   secret: fresh-trace-unified-secret-key-2026
   access-expiration: 86400000
   refresh-expiration: 604800000
+
+# Bug #31 fix: 上传路径
+upload:
+  path: ${user.dir}/uploads

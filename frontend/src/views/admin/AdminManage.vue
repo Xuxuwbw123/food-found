@@ -49,7 +49,7 @@ async function loadData() {
 }
 
 function openDialog(row) {
-  if (row) { form.id = row.id; form.username = row.username; form.nickname = row.nickname||''; form.phone = row.phone||''; form.password = '' }
+  if (row) { form.id = row.id; form.username = row.username; form.nickname = row.nickname||''; form.phone = row.phone||''; form.password = ''; form.status = row.status }
   else { form.id = null; form.username = ''; form.password = ''; form.nickname = ''; form.phone = '' }
   dialogVisible.value = true
 }
@@ -60,7 +60,7 @@ async function handleSubmit() {
   if (!form.id && !form.password) { ElMessage.warning('请输入密码'); return }
   submitLoading.value = true
   try {
-    if (form.id) await axios.put('/api/admin/admins', { id: form.id, nickname: form.nickname, phone: form.phone, status: 1 })
+    if (form.id) await axios.put('/api/admin/admins', { id: form.id, nickname: form.nickname, phone: form.phone, status: form.status })
     else await axios.post('/api/admin/admins', { username: form.username, password: form.password, nickname: form.nickname, phone: form.phone })
     ElMessage.success(form.id ? '更新成功' : '新增成功')
     dialogVisible.value = false; loadData()

@@ -249,9 +249,15 @@ async function addTrace() {
   saving.value = true
   try {
     // 1. 创建溯源批次
+    // Bug #5 fix: 用户填写的 responsiblePerson 优先生效
     const traceRes = await axios.post('/api/trace/create', {
-      ...traceForm, farmerId: farmer.value.id, farmName: farmer.value.farmerName,
-      responsiblePerson: farmer.value.contactPerson
+      farmerId: farmer.value.id,
+      farmName: farmer.value.farmName || farmer.value.farmerName,
+      responsiblePerson: farmer.value.contactPerson,
+      ...traceForm,
+      responsiblePerson: (traceForm.responsiblePerson && traceForm.responsiblePerson.trim())
+        ? traceForm.responsiblePerson.trim()
+        : farmer.value.contactPerson
     })
     const traceId = traceRes.data.data?.id || traceRes.data
     // 2. 同时创建产品（待审核）
@@ -259,7 +265,7 @@ async function addTrace() {
       productName: traceForm.productName,
       farmerId: farmer.value.id,
       traceId: traceId,
-      categoryId: 12,
+      categoryId: productForm.categoryId || 8000000000000001,  // Bug #6 fix
       productNo: 'P' + Date.now(),
       originPlace: traceForm.originPlace,
       ...productForm

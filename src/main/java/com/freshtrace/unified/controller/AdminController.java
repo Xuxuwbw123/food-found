@@ -37,6 +37,8 @@ public class AdminController {
     @Autowired private FarmerService farmerService;
     @Autowired private FarmerAuditService farmerAuditService;
     @Autowired private CouponService couponService;
+    @Autowired private com.freshtrace.unified.service.TraceabilityService traceabilityService;
+    @Autowired private com.freshtrace.unified.mapper.ProductFavoriteMapper productFavoriteMapper;
     @Autowired private UserCouponService userCouponService;
     @Autowired private SeckillService seckillService;
     @Autowired private MarketingActivityService marketingService;
@@ -236,7 +238,15 @@ public class AdminController {
     }
 
     @DeleteMapping("/product/delete/{id}")
+    @org.springframework.transaction.annotation.Transactional
     public Result<?> productDelete(@PathVariable Long id) {
+        // Bug #7: 级联删除溯源
+        traceabilityService.update(new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<com.freshtrace.unified.entity.Traceability>()
+                .set(com.freshtrace.unified.entity.Traceability::getDeleted, 1)
+                .eq(com.freshtrace.unified.entity.Traceability::getProductId, id));
+        // Bug #21: 级联删除收藏
+        productFavoriteMapper.delete(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.freshtrace.unified.entity.ProductFavorite>()
+                .eq(com.freshtrace.unified.entity.ProductFavorite::getProductId, id));
         productService.removeById(id);
         return Result.success();
     }
