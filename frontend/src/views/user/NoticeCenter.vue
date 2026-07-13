@@ -9,7 +9,7 @@
           <el-radio-button value="afterSales">售后通知</el-radio-button>
           <el-radio-button value="system">系统通知</el-radio-button>
         </el-radio-group>
-        <el-button @click="readAll" :disabled="unreadCount===0">全部已读</el-button>
+        <el-button @click="readAll" :disabled="auth.unreadCount===0">全部已读</el-button>
       </div>
       <el-empty v-if="!loading && list.length===0" description="暂无消息" />
       <div v-else v-loading="loading" class="notice-list">
@@ -39,7 +39,6 @@ const auth = useAuthStore(); auth.restoreSession()
 const router = useRouter()
 const list = ref([]); const loading = ref(false); const total = ref(0)
 const pageNum = ref(1); const filterType = ref('')
-const unreadCount = ref(0)
 
 function typeTag(t) { return { order: 'warning', after_sales: 'danger', system: '' }[t] || '' }
 function typeText(t) { return { order: '订单', after_sales: '售后', system: '系统' }[t] || '系统' }
@@ -52,18 +51,24 @@ async function loadData() {
     const r = await axios.get('/api/notice/list', { params })
     list.value = r.data.data?.records || []
     total.value = r.data.data?.total || 0
-    // count unread
-    try { const u = await axios.get('/api/notice/unread-count'); unreadCount.value = u.data.data?.count || 0 } catch {}
+    // 同步全局未读数(顶部铃铛和这里的"全部已读"按钮共用)
+    await auth.loadUnreadCount()
   } finally { loading.value = false }
 }
 
 async function readAll() {
   await axios.put('/api/notice/read-all')
+  // 不依赖后端返回,本地先把全局未读数置 0;列表走 loadData 重新拉(用 isRead=1 渲染)
+  auth.resetUnreadCount()
   loadData()
 }
 
 async function clickNotice(n) {
-  if (n.isRead === 0) { await axios.put(`/api/notice/read/${n.id}`); n.isRead = 1; unreadCount.value-- }
+  if (n.isRead === 0) {
+    await axios.put(`/api/notice/read/${n.id}`)
+    n.isRead = 1
+    auth.decrementUnreadCount()
+  }
   if (n.relationId) {
     if (n.noticeType === 'order') router.push(`/orders`)
     else if (n.noticeType === 'after_sales') router.push('/after-sales')

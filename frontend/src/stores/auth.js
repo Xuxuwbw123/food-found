@@ -36,6 +36,25 @@ export const useAuthStore = defineStore('auth', () => {
   const isAdmin = computed(() => user.value?.user_type === 3)
   const isFarmer = computed(() => user.value?.user_type === 2)
 
+  // 顶部铃铛 + 消息中心 共享的未读消息数(全局 state,避免两处 ref 各自维护不同步)
+  const unreadCount = ref(0)
+
+  async function loadUnreadCount() {
+    if (!isLoggedIn.value) { unreadCount.value = 0; return }
+    try {
+      const r = await axios.get('/api/notice/unread-count')
+      unreadCount.value = r.data?.data?.count || 0
+    } catch { /* 接口失败时保留上次值,避免抖动 */ }
+  }
+
+  function decrementUnreadCount() {
+    if (unreadCount.value > 0) unreadCount.value--
+  }
+
+  function resetUnreadCount() {
+    unreadCount.value = 0
+  }
+
   async function login(username, password) {
     const res = await axios.post('/auth/login', { username, password })
     if (res.data.code !== 200) throw new Error(res.data.message || '登录失败')
@@ -72,6 +91,7 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = null
     accessToken.value = ''
     refreshToken.value = ''
+    unreadCount.value = 0
     localStorage.removeItem('accessToken')
     localStorage.removeItem('refreshToken')
     localStorage.removeItem('user')
@@ -86,5 +106,5 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  return { user, accessToken, refreshToken, isLoggedIn, isAdmin, isFarmer, login, logout, restoreSession, tryRefresh }
+  return { user, accessToken, refreshToken, unreadCount, isLoggedIn, isAdmin, isFarmer, login, logout, restoreSession, tryRefresh, loadUnreadCount, decrementUnreadCount, resetUnreadCount }
 })

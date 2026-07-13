@@ -22,7 +22,7 @@
             <el-button v-if="auth.isFarmer" size="large" type="success" @click="$router.push('/farmer')">农户工作台</el-button>
             <el-button v-if="auth.isAdmin" size="large" @click="$router.push('/admin/dashboard')">管理后台</el-button>
             <el-button v-if="!auth.isFarmer && !auth.isAdmin" size="large" type="warning" @click="$router.push('/farmer')">申请成为农户</el-button>
-            <el-badge :value="unreadCount" :hidden="unreadCount===0" :max="5" :is-dot="unreadCount>5" style="margin-right:8px"><el-button size="large" @click="$router.push('/notices')">🔔</el-button></el-badge>
+            <el-badge :value="auth.unreadCount" :hidden="auth.unreadCount===0" :max="5" :is-dot="auth.unreadCount>5" style="margin-right:8px"><el-button size="large" @click="$router.push('/notices')">🔔</el-button></el-badge>
             <el-dropdown trigger="click">
               <span style="cursor:pointer;font-size:14px;color:#333;display:flex;align-items:center;gap:4px">
                 <el-avatar :size="28" icon="UserFilled" />
@@ -83,7 +83,6 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { Search, ArrowDown, UserFilled } from '@element-plus/icons-vue'
 import { useAuthStore } from '../stores/auth'
-import axios from 'axios'
 
 const route = useRoute()
 const router = useRouter()
@@ -91,12 +90,6 @@ const auth = useAuthStore()
 const isFarmerPage = computed(() => route.path.startsWith('/farmer'))
 auth.restoreSession()
 const searchKeyword = ref('')
-const unreadCount = ref(0)
-
-async function loadUnreadCount() {
-  if (!auth.isLoggedIn) return
-  try { const r = await axios.get('/api/notice/unread-count'); unreadCount.value = r.data.data?.count || 0 } catch {}
-}
 
 function handleLogout() {
   auth.logout()
@@ -115,12 +108,11 @@ function onSearch() {
 }
 
 let pollTimer = null
-watch(() => route.path, (newPath) => {
-  if (newPath !== '/notices') loadUnreadCount()
-})
+// 任何路由变化都重新拉一次(原来在 /notices 时跳过会导致铃铛停留在登录时的旧值)
+watch(() => route.path, () => auth.loadUnreadCount())
 onMounted(() => {
-  loadUnreadCount()
-  pollTimer = setInterval(loadUnreadCount, 30000)
+  auth.loadUnreadCount()
+  pollTimer = setInterval(() => auth.loadUnreadCount(), 30000)
 })
 onUnmounted(() => { if (pollTimer) clearInterval(pollTimer) })
 </script>
