@@ -80,6 +80,9 @@
           <el-menu-item index="/admin/marketing"><span>营销活动</span></el-menu-item>
         </el-sub-menu>
         <el-menu-item index="/admin/members"><el-icon><UserFilled /></el-icon><span>会员管理</span></el-menu-item>
+        <el-menu-item index="/admin/trace-settings"><el-icon><Setting /></el-icon><span>溯源设置</span></el-menu-item>
+        <el-menu-item index="/admin/chat"><el-icon><ChatLineSquare /></el-icon><span>客服会话</span></el-menu-item>
+        <el-menu-item index="/admin/ai-settings"><el-icon><Setting /></el-icon><span>AI客服设置</span></el-menu-item>
       </el-menu>
     </el-aside>
     <el-container>

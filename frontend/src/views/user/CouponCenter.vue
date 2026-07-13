@@ -24,7 +24,17 @@ import { useAuthStore } from '../../stores/auth'
 const auth = useAuthStore(); auth.restoreSession()
 const list = ref([]); const loading = ref(false)
 async function load() { loading.value = true; try { const r = await axios.get('/api/coupon/available'); list.value = r.data.data || [] } finally { loading.value = false } }
-async function take(cid) { try { await axios.post(`/api/coupon/take/${cid}`); ElMessage.success('领取成功'); load() } catch(e) { ElMessage.error(e.response?.data?.message||'领取失败') } }
+async function take(cid) {
+  try {
+    await axios.post(`/api/coupon/take/${cid}`)
+    ElMessage.success('领取成功')
+  } catch(e) {
+    const msg = e.response?.data?.message || ''
+    if (msg.includes('已领取')) { ElMessage.info('您已领取过该优惠券') }
+    else { ElMessage.error(msg || '领取失败') }
+  }
+  load()  // 无论成功失败都刷新列表
+}
 onMounted(() => { if (auth.isLoggedIn) load() })
 </script>
 

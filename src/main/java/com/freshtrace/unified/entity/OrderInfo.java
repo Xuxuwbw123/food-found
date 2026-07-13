@@ -26,6 +26,8 @@ public class OrderInfo {
     private Integer payType;
     private LocalDateTime payTime;
     private Integer orderStatus;
+    private Integer presaleStatus;
+    private Long traceId;
     private Integer deliveryType;
     private LocalDateTime deliveryTime;
     private LocalDateTime receiveTime;

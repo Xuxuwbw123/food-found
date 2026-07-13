@@ -8,6 +8,19 @@
         <el-form-item label="时间范围"><el-date-picker v-model="dateRange" type="daterange" range-separator="至" start-placeholder="开始" end-placeholder="结束" value-format="YYYY-MM-DD" /></el-form-item>
         <el-form-item><el-button type="primary" @click="loadData">搜索</el-button><el-button @click="resetQuery">重置</el-button></el-form-item>
       </el-form>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding:8px 12px;background:#f5f7fa;border-radius:6px">
+        <span style="font-size:13px;color:#666">共 {{ total }} 条记录，第 {{ query.pageNum }} 页</span>
+        <div>
+          <el-button size="small" :disabled="query.pageNum<=1" @click="query.pageNum--;loadData()">上一页</el-button>
+          <el-button size="small" :disabled="query.pageNum*query.pageSize>=total" @click="query.pageNum++;loadData()">下一页</el-button>
+          <el-select v-model="query.pageSize" size="small" style="width:90px;margin-left:8px" @change="query.pageNum=1;loadData()">
+            <el-option :value="10" label="10条/页" />
+            <el-option :value="20" label="20条/页" />
+            <el-option :value="50" label="50条/页" />
+          </el-select>
+        </div>
+      </div>
+
       <el-table :data="tableData" border stripe v-loading="loading">
         <el-table-column prop="id" label="ID" width="160" />
         <el-table-column prop="username" label="操作人" width="100" />
@@ -21,8 +34,8 @@
         <el-table-column prop="duration" label="耗时ms" width="80" />
         <el-table-column prop="createTime" label="创建时间" width="160" />
         <el-table-column label="操作" width="60" fixed="right"><template #default="{row}"><el-button link type="primary" size="small" @click="showDetail(row)">详情</el-button></template></el-table-column>
+
       </el-table>
-      <div class="pagination"><el-pagination v-model:current-page="query.pageNum" v-model:page-size="query.pageSize" :page-sizes="[10,20,50,100]" layout="total, sizes, prev, pager, next, jumper" :total="total" @size-change="loadData" @current-change="loadData" /></div>
     </el-card>
     <el-dialog v-model="detailVisible" title="日志详情" width="700px">
       <el-descriptions :column="2" border>

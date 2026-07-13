@@ -26,6 +26,7 @@ public class AuthInterceptor implements HandlerInterceptor {
             "/api/public/", "/uploads/", "/api/product/search",
             "/api/product/recommend", "/api/product/related/",
             "/api/trace/scan/", "/api/trace/by-product/", "/api/trace/list",
+            "/api/trace/qrcode/detail/", "/api/geocode", "/api/presale/list",
             "/api/trace/detail/", "/api/farmer/list", "/api/farmer/detail/",
             "/api/comment/product/", "/api/marketing/product/", "/api/marketing/active",
             "/api/points/exchange/rules"

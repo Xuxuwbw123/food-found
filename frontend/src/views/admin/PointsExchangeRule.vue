@@ -9,12 +9,8 @@
         <el-table-column prop="id" label="ID" width="160" />
         <el-table-column prop="ruleName" label="规则名称" width="200" />
         <el-table-column prop="pointsCost" label="消耗积分" width="100" />
-        <el-table-column prop="couponName" label="兑换优惠券" width="150" />
-        <el-table-column label="面额" width="100">
-          <template #default="{row}">¥{{ row.couponValue }}</template>
-        </el-table-column>
-        <el-table-column label="门槛" width="100">
-          <template #default="{row}">{{ row.couponMinAmount > 0 ? '满'+row.couponMinAmount : '无门槛' }}</template>
+        <el-table-column label="兑换优惠券" width="180">
+          <template #default="{row}">{{ getCouponName(row.couponId) }}</template>
         </el-table-column>
         <el-table-column label="状态" width="80">
           <template #default="{row}">
@@ -36,8 +32,11 @@
       <el-form :model="form" label-width="100px">
         <el-form-item label="规则名称"><el-input v-model="form.ruleName" /></el-form-item>
         <el-form-item label="消耗积分"><el-input-number v-model="form.pointsCost" :min="1" /></el-form-item>
-        <el-form-item label="优惠券面额"><el-input-number v-model="form.couponValue" :min="0" :precision="2" /></el-form-item>
-        <el-form-item label="使用门槛"><el-input-number v-model="form.couponMinAmount" :min="0" :precision="2" /></el-form-item>
+        <el-form-item label="兑换优惠券">
+          <el-select v-model="form.couponId" placeholder="选择优惠券" style="width:100%">
+            <el-option v-for="c in coupons" :key="c.id" :label="c.name + ' (¥' + c.faceValue + (c.minAmount > 0 ? ' 满' + c.minAmount : '') + ')'" :value="c.id" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="状态"><el-switch v-model="form.status" :active-value="1" :inactive-value="0" /></el-form-item>
       </el-form>
       <template #footer>
@@ -54,10 +53,16 @@ import { ElMessage } from 'element-plus'
 import axios from 'axios'
 
 const rules = ref([])
+const coupons = ref([])
 const loading = ref(false)
 const dialogVisible = ref(false)
 const saving = ref(false)
-const form = reactive({ id: null, ruleName: '', pointsCost: 100, couponValue: 5, couponMinAmount: 0, status: 1 })
+const form = reactive({ id: null, ruleName: '', pointsCost: 100, couponId: null, status: 1 })
+
+function getCouponName(couponId) {
+  const c = coupons.value.find(x => x.id === couponId)
+  return c ? c.name + ' ¥' + c.faceValue : '未关联'
+}
 
 async function load() {
   loading.value = true
@@ -67,16 +72,24 @@ async function load() {
   } finally { loading.value = false }
 }
 
+async function loadCoupons() {
+  try {
+    const r = await axios.get('/admin/coupons')
+    coupons.value = r.data.data || []
+  } catch {}
+}
+
 function openDialog(row) {
   if (row) {
-    Object.assign(form, { id: row.id, ruleName: row.ruleName, pointsCost: row.pointsCost, couponValue: row.couponValue, couponMinAmount: row.couponMinAmount, status: row.status })
+    Object.assign(form, { id: row.id, ruleName: row.ruleName, pointsCost: row.pointsCost, couponId: row.couponId, status: row.status })
   } else {
-    Object.assign(form, { id: null, ruleName: '', pointsCost: 100, couponValue: 5, couponMinAmount: 0, status: 1 })
+    Object.assign(form, { id: null, ruleName: '', pointsCost: 100, couponId: null, status: 1 })
   }
   dialogVisible.value = true
 }
 
 async function save() {
+  if (!form.couponId) { ElMessage.warning('请选择关联的优惠券'); return }
   saving.value = true
   try {
     if (form.id) await axios.put('/api/admin/points-exchange/rules', form)
@@ -91,7 +104,7 @@ async function del(id) {
   ElMessage.success('已删除'); load()
 }
 
-onMounted(load)
+onMounted(() => { load(); loadCoupons() })
 </script>
 
 <style scoped>

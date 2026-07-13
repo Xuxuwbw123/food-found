@@ -36,6 +36,8 @@
                   <el-dropdown-item v-if="!isFarmerPage" @click="$router.push('/coupons')">领券中心</el-dropdown-item>
                   <el-dropdown-item v-if="!isFarmerPage" @click="$router.push('/points')">我的积分</el-dropdown-item>
                   <el-dropdown-item v-if="!isFarmerPage" @click="$router.push('/footprints')">浏览足迹</el-dropdown-item>
+                  <el-dropdown-item v-if="!isFarmerPage" @click="$router.push('/member')">会员中心</el-dropdown-item>
+                  <el-dropdown-item v-if="!isFarmerPage" @click="$router.push('/chat')">在线客服</el-dropdown-item>
                   <el-dropdown-item @click="$router.push('/profile')">账户设置</el-dropdown-item>
                   <el-dropdown-item @click="switchAccount" divided>切换账号</el-dropdown-item>
                   <el-dropdown-item @click="handleLogout">退出登录</el-dropdown-item>

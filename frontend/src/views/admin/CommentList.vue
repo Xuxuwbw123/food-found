@@ -66,11 +66,9 @@
             </el-popconfirm>
           </template>
         </el-table-column>
+
       </el-table>
 
-      <div class="pagination">
-        <el-pagination v-model:current-page="query.pageNum" v-model:page-size="query.pageSize" :page-sizes="[10,20,50]" layout="total, sizes, prev, pager, next, jumper" :total="total" @size-change="loadData" @current-change="loadData" />
-      </div>
     </el-card>
   </div>
 </template>

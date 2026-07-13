@@ -7,14 +7,19 @@
         <div v-for="o in orders" :key="o.id" class="order-card">
           <div class="order-header">
             <span>订单号：{{ o.orderNo }}</span>
-            <el-tag :type="statusTag(o.orderStatus)" size="small">{{ statusText(o.orderStatus) }}</el-tag>
+            <el-tag v-if="o.presaleStatus > 0" type="danger" size="small" effect="dark">预售</el-tag>
+            <el-tag :type="o.presaleStatus > 0 ? presaleStatusTag(o.presaleStatus) : statusTag(o.orderStatus)" size="small">
+              {{ o.presaleStatus > 0 ? presaleStatusText(o.presaleStatus) : statusText(o.orderStatus) }}
+            </el-tag>
             <el-button v-if="o.orderStatus===0" type="danger" size="small" @click="payOrder(o.id)">去付款 ¥{{ o.payAmount || o.totalAmount }}</el-button>
+            <el-button v-if="o.presaleStatus > 0" size="small" type="success" @click="$router.push('/my-presale')">查看生长动态</el-button>
             <el-button v-if="o.orderStatus===0||o.orderStatus===1" link type="warning" size="small" @click="cancelOrder(o.id)">取消订单</el-button>
-            <el-button v-if="o.orderStatus===2||o.orderStatus===3" size="small" @click="goLogistics(o)">📦 物流</el-button>
-            <el-button v-if="o.orderStatus===2" link type="danger" size="small" @click="applyAfterSales(o, 'intercept')">🚫 拦截退货</el-button>
-            <el-button v-if="o.orderStatus===3" link type="danger" size="small" @click="applyAfterSales(o, 'return')">申请售后</el-button>
-            <el-button v-if="o.orderStatus===3 && !o.isCommented" type="warning" size="small" @click="openReview(o)">去评价</el-button>
-            <el-tag v-if="o.orderStatus===3 && o.isCommented" type="success" size="small">已评价</el-tag>
+            <el-button v-if="(o.orderStatus===2||o.orderStatus===3) && (!o.presaleStatus || o.presaleStatus===0)" size="small" @click="goLogistics(o)">📦 物流</el-button>
+            <el-button v-if="o.orderStatus===2 && (!o.presaleStatus || o.presaleStatus===0)" type="success" size="small" @click="confirmReceive(o.id)">确认收货</el-button>
+            <el-button v-if="o.orderStatus===2 && (!o.presaleStatus || o.presaleStatus===0)" link type="danger" size="small" @click="applyAfterSales(o, 'intercept')">🚫 拦截退货</el-button>
+            <el-button v-if="o.orderStatus===3 && (!o.presaleStatus || o.presaleStatus===0)" link type="danger" size="small" @click="applyAfterSales(o, 'return')">申请售后</el-button>
+            <el-button v-if="o.orderStatus===3 && !o.isCommented && (!o.presaleStatus || o.presaleStatus===0)" type="warning" size="small" @click="openReview(o)">去评价</el-button>
+            <el-tag v-if="o.orderStatus===3 && o.isCommented && (!o.presaleStatus || o.presaleStatus===0)" type="success" size="small">已评价</el-tag>
             <span style="margin-left:auto;color:#999;font-size:13px">{{ o.createTime }}</span>
           </div>
           <div v-for="item in o.items" :key="item.id" class="order-item">
@@ -64,6 +69,8 @@ const orders = ref([]); const loading = ref(false)
 
 function statusTag(s) { return {0:'warning',1:'primary',2:'',3:'success',4:'info',5:'danger'}[s]||'' }
 function statusText(s) { return {0:'待付款',1:'待发货',2:'已发货',3:'已完成',4:'已取消',5:'售后中'}[s]||'未知' }
+function presaleStatusText(s) { return {1:'等待种植',2:'生长中',3:'已成熟',4:'已发货'}[s]||'未知' }
+function presaleStatusTag(s) { return {1:'warning',2:'',3:'success',4:'primary'}[s]||'info' }
 
 async function goTrace(productId) {
   try {
@@ -76,15 +83,24 @@ function goLogistics(o) {
   router.push(`/logistics/${o.id}`)
 }
 async function payOrder(id) {
-  try { await axios.put(`/api/order/pay/${id}`); ElMessage.success('支付成功'); load() } catch { ElMessage.error('支付失败') }
+  const order = orders.value.find(o => o.id === id)
+  const total = order ? (order.payAmount || order.totalAmount) : '0.00'
+  router.push({ path: '/pay', query: { orderId: id, total } })
 }
 async function cancelOrder(id) {
   try {
     await axios.put(`/api/order/cancel/${id}`)
     ElMessage.success('订单已取消')
-    // 直接从列表移除，不依赖页面刷新
     orders.value = orders.value.filter(o => String(o.id) !== String(id))
   } catch { ElMessage.error('取消失败') }
+}
+
+async function confirmReceive(id) {
+  try {
+    await axios.put(`/api/order/${id}/receive`)
+    ElMessage.success('已确认收货')
+    load()
+  } catch { ElMessage.error('确认收货失败') }
 }
 // ===== 评价 =====
 const reviewVisible = ref(false)

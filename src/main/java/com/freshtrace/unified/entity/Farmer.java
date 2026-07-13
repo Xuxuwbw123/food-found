@@ -19,6 +19,8 @@ public class Farmer {
     private String city;
     private String district;
     private String address;
+    private BigDecimal longitude;
+    private BigDecimal latitude;
     private BigDecimal farmArea;
     private String farmDescription;
     private String mainProducts;

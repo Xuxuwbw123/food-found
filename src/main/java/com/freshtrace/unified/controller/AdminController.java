@@ -37,10 +37,13 @@ public class AdminController {
     @Autowired private FarmerService farmerService;
     @Autowired private FarmerAuditService farmerAuditService;
     @Autowired private CouponService couponService;
+    @Autowired private com.freshtrace.unified.service.TraceabilityService traceabilityService;
+    @Autowired private com.freshtrace.unified.mapper.ProductFavoriteMapper productFavoriteMapper;
     @Autowired private UserCouponService userCouponService;
     @Autowired private SeckillService seckillService;
     @Autowired private MarketingActivityService marketingService;
     @Autowired private SysConfigService configService;
+    @Autowired private SysLocationService locationService;
     @Autowired private SysNoticeService noticeService;
     @Autowired private SysOperationLogService operationLogService;
 
@@ -223,6 +226,12 @@ public class AdminController {
         p.setOriginPlace((String) body.getOrDefault("originPlace", ""));
         p.setDescription((String) body.getOrDefault("description", ""));
         p.setTraceId(body.containsKey("traceId") ? Long.valueOf(body.get("traceId").toString()) : null);
+        // 预售字段
+        if (body.containsKey("isPresale")) {
+            p.setIsPresale(Integer.parseInt(body.get("isPresale").toString()));
+            if (body.get("presaleStart") != null) p.setPresaleStart(java.time.LocalDate.parse(body.get("presaleStart").toString()));
+            if (body.get("presaleEnd") != null) p.setPresaleEnd(java.time.LocalDate.parse(body.get("presaleEnd").toString()));
+        }
         p.setStatus(0); p.setAuditStatus(0); p.setDeleted(0); // 待审核
         p.setCreateTime(LocalDateTime.now());
         productService.save(p);
@@ -236,7 +245,15 @@ public class AdminController {
     }
 
     @DeleteMapping("/product/delete/{id}")
+    @org.springframework.transaction.annotation.Transactional
     public Result<?> productDelete(@PathVariable Long id) {
+        // Bug #7: 级联删除溯源
+        traceabilityService.update(new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<com.freshtrace.unified.entity.Traceability>()
+                .set(com.freshtrace.unified.entity.Traceability::getDeleted, 1)
+                .eq(com.freshtrace.unified.entity.Traceability::getProductId, id));
+        // Bug #21: 级联删除收藏
+        productFavoriteMapper.delete(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.freshtrace.unified.entity.ProductFavorite>()
+                .eq(com.freshtrace.unified.entity.ProductFavorite::getProductId, id));
         productService.removeById(id);
         return Result.success();
     }
@@ -383,15 +400,21 @@ public class AdminController {
     }
 
     @PutMapping("/order/delivery/{id}")
-    public Result<?> orderDelivery(@PathVariable Long id, @RequestBody Map<String, String> body) {
+    public Result<?> orderDelivery(@PathVariable Long id,
+                                   @RequestParam(required = false) String logisticsNo,
+                                   @RequestBody(required = false) Map<String, String> body) {
         OrderInfo order = orderService.getById(id);
+        if (logisticsNo == null && body != null) logisticsNo = body.get("logisticsNo");
+        String logisticsCompany = (body != null) ? body.get("logisticsCompany") : null;
         if (order == null || order.getOrderStatus() != 1) return Result.error(400, "订单状态不允许发货");
-        order.setOrderStatus(2); order.setLogisticsNo(body.get("logisticsNo"));
-        order.setLogisticsCompany(body.get("logisticsCompany")); order.setDeliveryTime(LocalDateTime.now());
+        order.setOrderStatus(2);
+        order.setLogisticsNo(logisticsNo != null ? logisticsNo : "");
+        order.setLogisticsCompany(logisticsCompany != null ? logisticsCompany : "");
+        order.setDeliveryTime(LocalDateTime.now());
         orderService.updateById(order);
         OrderLog log = new OrderLog();
         log.setOrderId(id); log.setOrderNo(order.getOrderNo()); log.setOrderStatus(2);
-        log.setOperatorType(1); log.setRemark("商家发货:" + body.getOrDefault("logisticsNo", ""));
+        log.setOperatorType(1); log.setRemark("商家发货:" + (logisticsNo != null ? logisticsNo : ""));
         orderLogService.save(log);
         return Result.success("发货成功", null);
     }
@@ -569,6 +592,8 @@ public class AdminController {
                 row.put("address", f.getAddress());
                 row.put("farmArea", f.getFarmArea());
                 row.put("mainProducts", f.getMainProducts());
+                row.put("longitude", f.getLongitude());
+                row.put("latitude", f.getLatitude());
             }
             enrichedRecords.add(row);
         }
@@ -600,6 +625,8 @@ public class AdminController {
             data.put("address", f.getAddress());
             data.put("farmArea", f.getFarmArea());
             data.put("mainProducts", f.getMainProducts());
+            data.put("longitude", f.getLongitude());
+            data.put("latitude", f.getLatitude());
         }
         return Result.success(data);
     }
@@ -622,6 +649,27 @@ public class AdminController {
             if (approve) {
                 User u = new User(); u.setId(farmer.getUserId()); u.setUserType(2);
                 userService.updateById(u);
+                // 审核通过后自动创建基础点位
+                if (farmer.getLongitude() != null && farmer.getLatitude() != null) {
+                    Long existing = locationService.count(new LambdaQueryWrapper<SysLocation>()
+                            .eq(SysLocation::getFarmerId, farmer.getId()));
+                    if (existing == 0) {
+                        SysLocation loc = new SysLocation();
+                        loc.setLocationName(farmer.getFarmerName());
+                        loc.setLocationType("farm");
+                        loc.setFarmerId(farmer.getId());
+                        loc.setUserId(farmer.getUserId());
+                        loc.setAddress(buildFarmerAddress(farmer));
+                        loc.setLongitude(farmer.getLongitude());
+                        loc.setLatitude(farmer.getLatitude());
+                        loc.setProvince(farmer.getProvince());
+                        loc.setCity(farmer.getCity());
+                        loc.setDistrict(farmer.getDistrict());
+                        loc.setStatus(1);
+                        loc.setCreateTime(LocalDateTime.now());
+                        locationService.save(loc);
+                    }
+                }
             }
         }
         return Result.success(approve ? "已通过" : "已驳回", null);
@@ -820,6 +868,8 @@ public class AdminController {
                     .mapToDouble(o -> o.getPayAmount() != null ? o.getPayAmount().doubleValue() : 0).sum();
             row.put("totalSpent", totalSpent);
             row.put("orderCount", orders.size());
+            row.put("memberLevel", u.getMemberLevel() != null ? u.getMemberLevel() : 0);
+            row.put("balance", u.getBalance() != null ? u.getBalance() : java.math.BigDecimal.ZERO);
             enrichedRecords.add(row);
         }
         Map<String, Object> result = new HashMap<>();
@@ -947,5 +997,14 @@ public class AdminController {
                 return;
         }
         response.getWriter().write(csv.toString());
+    }
+
+    private String buildFarmerAddress(Farmer f) {
+        StringBuilder sb = new StringBuilder();
+        if (f.getProvince() != null) sb.append(f.getProvince());
+        if (f.getCity() != null) sb.append(f.getCity());
+        if (f.getDistrict() != null) sb.append(f.getDistrict());
+        if (f.getAddress() != null) sb.append(f.getAddress());
+        return sb.toString();
     }
 }

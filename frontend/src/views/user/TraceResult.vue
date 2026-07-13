@@ -20,6 +20,12 @@
           <div class="summary-right"><el-tag type="success" size="large" effect="dark">已认证</el-tag></div>
         </div>
 
+        <!-- 溯源地图 -->
+        <div class="trace-map-section" v-if="locations.length">
+          <h2 class="section-heading">产地地图</h2>
+          <div ref="mapContainer" class="map-container"></div>
+        </div>
+
         <div class="trace-timeline">
           <h2 class="section-heading">溯源记录（种植 → 收获）</h2>
           <el-timeline>
@@ -128,6 +134,8 @@ import axios from 'axios'
 const route = useRoute()
 const data = ref({})
 const images = ref([])
+const locations = ref([])
+const mapContainer = ref(null)
 const loading = ref(false)
 
 const typeEn = { '种植': 'planting', '施肥': 'fertilizer', '农药': 'pesticide', '灌溉': 'irrigation', '收获': 'harvest' }
@@ -155,7 +163,45 @@ async function loadData() {
         images.value = imgRes.data.data || []
       } catch {}
     }
+    // 加载溯源位置
+    if (traceId) {
+      try {
+        const locRes = await axios.get(`/api/trace/locations/${traceId}`)
+        locations.value = locRes.data.data || []
+        if (locations.value.length) {
+          setTimeout(renderMap, 300)
+        }
+      } catch {}
+    }
   } finally { loading.value = false }
+}
+
+function renderMap() {
+  if (!mapContainer.value || !window.AMap) {
+    const script = document.createElement('script')
+    script.src = 'https://webapi.amap.com/maps?v=2.0&key=202efb721c5ede9efc4f1b7343cd0cdd'
+    script.onload = () => renderMap()
+    document.head.appendChild(script)
+    return
+  }
+  const map = new window.AMap.Map(mapContainer.value, {
+    zoom: 12,
+    center: [locations.value[0].longitude, locations.value[0].latitude],
+    mapStyle: 'amap://styles/normal'
+  })
+  const typeColors = { farm: '#52c41a', warehouse: '#1890ff', delivery: '#fa8c16', processing: '#722ed1' }
+  const markers = locations.value.map(loc => {
+    return new window.AMap.Marker({
+      position: [loc.longitude, loc.latitude],
+      title: loc.locationName,
+      label: {
+        content: `<div style="background:${typeColors[loc.locationType]||'#666'};color:#fff;padding:2px 6px;border-radius:4px;font-size:12px;white-space:nowrap">${loc.locationName}</div>`,
+        offset: new window.AMap.Pixel(0, -30)
+      }
+    })
+  })
+  map.add(markers)
+  if (markers.length > 1) map.setFitView(markers)
 }
 
 onMounted(loadData)
@@ -171,4 +217,6 @@ onMounted(loadData)
 .section-heading { font-size: 20px; font-weight: 600; color: #333; margin-bottom: 20px; padding-left: 12px; border-left: 4px solid #1a8c3a; }
 .card-header { display: flex; align-items: center; gap: 8px; font-weight: 600; }
 .stage-images { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; padding-top: 10px; border-top: 1px solid #eee; }
+.trace-map-section { margin-top: 30px; }
+.map-container { width: 100%; height: 400px; border-radius: 12px; border: 1px solid #e4e7ed; overflow: hidden; }
 </style>

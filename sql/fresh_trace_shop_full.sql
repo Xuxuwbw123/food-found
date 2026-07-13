@@ -1879,3 +1879,110 @@ UNLOCK TABLES;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
 -- Dump completed on 2026-07-11 20:59:37
+
+-- ============================================================
+-- 新增表：AI客服 + 一物一码 + 地理位置
+-- ============================================================
+
+-- 聊天消息表（AI客服 + 人工客服）
+CREATE TABLE IF NOT EXISTS `chat_message` (
+  `id` bigint(20) NOT NULL,
+  `from_user_id` bigint(20) NOT NULL COMMENT '发送者ID（0=AI）',
+  `to_user_id` bigint(20) NOT NULL COMMENT '接收者ID',
+  `content` text NOT NULL COMMENT '消息内容',
+  `msg_type` varchar(20) DEFAULT 'text' COMMENT '消息类型: text/image/system/refund/exchange',
+  `is_read` int(11) DEFAULT '0' COMMENT '0未读 1已读',
+  `create_time` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_from_user` (`from_user_id`),
+  KEY `idx_to_user` (`to_user_id`),
+  KEY `idx_create_time` (`create_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='聊天消息表';
+
+-- 基础地理点位表
+CREATE TABLE IF NOT EXISTS `sys_location` (
+  `id` bigint(20) NOT NULL,
+  `location_name` varchar(200) DEFAULT NULL COMMENT '点位名称',
+  `location_type` varchar(50) DEFAULT 'farm' COMMENT '类型: farm/warehouse/processing/delivery',
+  `farmer_id` bigint(20) DEFAULT NULL COMMENT '所属农户ID',
+  `user_id` bigint(20) DEFAULT NULL COMMENT '所属用户ID',
+  `address` varchar(500) DEFAULT NULL COMMENT '文字地址',
+  `longitude` decimal(10,6) DEFAULT NULL COMMENT '经度',
+  `latitude` decimal(10,6) DEFAULT NULL COMMENT '纬度',
+  `province` varchar(50) DEFAULT NULL,
+  `city` varchar(50) DEFAULT NULL,
+  `district` varchar(50) DEFAULT NULL,
+  `status` int(11) DEFAULT '1' COMMENT '0禁用 1启用',
+  `create_time` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_farmer_id` (`farmer_id`),
+  KEY `idx_user_id` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='基础地理点位表';
+
+-- 商品QR码表（一物一码）
+CREATE TABLE IF NOT EXISTS `product_qrcode` (
+  `id` bigint(20) NOT NULL,
+  `product_id` bigint(20) NOT NULL,
+  `trace_id` bigint(20) DEFAULT NULL COMMENT '关联溯源批次',
+  `order_id` bigint(20) DEFAULT NULL,
+  `qrcode_content` varchar(500) NOT NULL,
+  `qrcode_image` varchar(500) DEFAULT NULL,
+  `scan_count` int(11) DEFAULT '0',
+  `first_scan_time` datetime DEFAULT NULL,
+  `first_scan_ip` varchar(64) DEFAULT NULL,
+  `status` tinyint(4) DEFAULT '1',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_content` (`qrcode_content`),
+  KEY `idx_product_id` (`product_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- QR码扫描日志
+CREATE TABLE IF NOT EXISTS `qrcode_scan_log` (
+  `id` bigint(20) NOT NULL,
+  `qrcode_id` bigint(20) NOT NULL,
+  `user_id` bigint(20) DEFAULT NULL,
+  `scan_ip` varchar(64) DEFAULT NULL,
+  `scan_time` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_qrcode_id` (`qrcode_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 生长周期时间轴
+CREATE TABLE IF NOT EXISTS `growth_timeline` (
+  `id` bigint(20) NOT NULL,
+  `trace_id` bigint(20) NOT NULL,
+  `order_ids` varchar(500) DEFAULT NULL COMMENT '关联的预售订单ID列表',
+  `stage` varchar(32) NOT NULL,
+  `title` varchar(200) DEFAULT NULL,
+  `content` text,
+  `image_urls` varchar(2000) DEFAULT NULL,
+  `update_time` datetime DEFAULT CURRENT_TIMESTAMP,
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_trace_id` (`trace_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- AI客服配置（插入到 sys_config 表）
+INSERT IGNORE INTO `sys_config` (`id`, `config_key`, `config_value`, `config_name`, `config_group`, `remark`) VALUES
+(200, 'ai_api_url', 'https://api.xiaomimimo.com/v1/chat/completions', 'AI接口地址', 'ai', 'AI客服API地址'),
+(201, 'ai_api_key', '', 'AI接口密钥', 'ai', 'AI客服API Key（需管理员配置）'),
+(202, 'ai_model', 'mimo-v2.5-pro', 'AI模型名称', 'ai', 'AI客服模型名称'),
+(100, 'qrcode_base_url', 'http://localhost:8088', '溯源码服务器地址', 'trace', '手机扫码后访问的服务器地址');
+
+-- 农户表新增经纬度字段
+ALTER TABLE `farmer` ADD COLUMN IF NOT EXISTS `longitude` decimal(10,6) DEFAULT NULL COMMENT '经度';
+ALTER TABLE `farmer` ADD COLUMN IF NOT EXISTS `latitude` decimal(10,6) DEFAULT NULL COMMENT '纬度';
+
+-- 商品表新增预售字段
+ALTER TABLE `product` ADD COLUMN IF NOT EXISTS `is_presale` int(11) DEFAULT 0 COMMENT '是否预售';
+ALTER TABLE `product` ADD COLUMN IF NOT EXISTS `presale_start` date DEFAULT NULL COMMENT '预计种植日期';
+ALTER TABLE `product` ADD COLUMN IF NOT EXISTS `presale_end` date DEFAULT NULL COMMENT '预计成熟日期';
+
+-- 订单表新增预售和优惠券字段
+ALTER TABLE `order_info` ADD COLUMN IF NOT EXISTS `presale_status` int(11) DEFAULT 0 COMMENT '预售状态: 0普通 1等待种植 2生长中 3已成熟';
+ALTER TABLE `order_info` ADD COLUMN IF NOT EXISTS `trace_id` bigint(20) DEFAULT NULL COMMENT '关联溯源批次ID';
+
+-- 用户表新增会员字段
+ALTER TABLE `sys_user` ADD COLUMN IF NOT EXISTS `member_level` int(11) DEFAULT 0 COMMENT '会员等级';
+ALTER TABLE `sys_user` ADD COLUMN IF NOT EXISTS `total_spent` decimal(10,2) DEFAULT 0.00 COMMENT '累计消费';

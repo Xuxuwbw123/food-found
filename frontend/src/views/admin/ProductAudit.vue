@@ -22,6 +22,12 @@
         </el-table-column>
         <el-table-column prop="stock" label="库存" width="80" />
         <el-table-column prop="unit" label="单位" width="60" />
+        <el-table-column label="类型" width="80">
+          <template #default="{row}"><el-tag v-if="row.isPresale===1" type="danger" size="small">预售</el-tag><el-tag v-else size="small">普通</el-tag></template>
+        </el-table-column>
+        <el-table-column label="预售时间" width="180">
+          <template #default="{row}"><span v-if="row.isPresale===1">{{ row.presaleStart }} 至 {{ row.presaleEnd }}</span><span v-else>-</span></template>
+        </el-table-column>
         <el-table-column label="状态" width="100">
           <template #default="{row}">
             <el-tag :type="row.auditStatus===1?'success':row.auditStatus===2?'danger':'warning'" size="small">

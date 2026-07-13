@@ -6,6 +6,8 @@ import com.freshtrace.unified.common.UserContext;
 import com.freshtrace.unified.dto.*;
 import com.freshtrace.unified.entity.*;
 import com.freshtrace.unified.mapper.*;
+import com.freshtrace.unified.mapper.UserCouponMapper;
+import com.freshtrace.unified.mapper.CouponMapper;
 import com.freshtrace.unified.service.OrderService;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,12 +32,20 @@ public class OrderServiceImpl implements OrderService {
     @Autowired private UserAddressMapper userAddressMapper;
     @Autowired private ProductMapper productMapper;
     @Autowired private FarmerMapper farmerMapper;
+    @Autowired private SysUserMapper userMapper;
+    @Autowired private UserCouponMapper userCouponMapper;
+    @Autowired private CouponMapper couponMapper;
+    @Autowired private MemberLevelConfigMapper memberLevelConfigMapper;
+    @Autowired private MemberPointMapper memberPointMapper;
+    @Autowired private PointLogMapper pointLogMapper;
 
     @Override
     @Transactional
     public Map<String, Object> create(CreateOrderDTO dto) {
         Long userId = UserContext.getUserId();
-        String orderNo = "FD" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS"));
+        // Bug #34 fix: 订单号加4位随机数防撞车
+        String orderNo = "FD" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS"))
+                + String.format("%04d", java.util.concurrent.ThreadLocalRandom.current().nextInt(10000));
         BigDecimal totalAmount = BigDecimal.ZERO;
         int totalQty = 0;
 
@@ -89,12 +99,60 @@ public class OrderServiceImpl implements OrderService {
             totalQty += item.getQuantity();
         }
 
+        // 1. 先算会员折扣
+        SysUser currentUser = userMapper.selectById(userId);
+        BigDecimal memberDiscountRate = BigDecimal.ONE;
+        if (currentUser != null && currentUser.getMemberLevel() != null && currentUser.getMemberLevel() > 0) {
+            MemberLevelConfig levelConfig = memberLevelConfigMapper.selectOne(
+                    new LambdaQueryWrapper<MemberLevelConfig>().eq(MemberLevelConfig::getLevel, currentUser.getMemberLevel()));
+            if (levelConfig != null && levelConfig.getDiscountRate() != null) {
+                memberDiscountRate = levelConfig.getDiscountRate();
+            }
+        }
+        BigDecimal memberDiscountAmount = totalAmount.multiply(BigDecimal.ONE.subtract(memberDiscountRate)).setScale(2, java.math.RoundingMode.HALF_UP);
+        BigDecimal afterMemberDiscount = totalAmount.subtract(memberDiscountAmount);
+
+        // 2. 再减优惠券
+        BigDecimal couponDiscountAmount = BigDecimal.ZERO;
+        if (dto.getCouponId() != null) {
+            UserCoupon uc = userCouponMapper.selectOne(new LambdaQueryWrapper<UserCoupon>()
+                    .eq(UserCoupon::getUserId, userId)
+                    .eq(UserCoupon::getCouponId, dto.getCouponId())
+                    .eq(UserCoupon::getStatus, "unused"));
+            if (uc != null) {
+                Coupon coupon = couponMapper.selectById(dto.getCouponId());
+                if (coupon != null && Integer.valueOf(1).equals(coupon.getStatus())) {
+                    String couponType = coupon.getType();
+                    if ("full_reduce".equals(couponType)) {
+                        // 满减券
+                        if (afterMemberDiscount.compareTo(coupon.getMinAmount()) >= 0) {
+                            couponDiscountAmount = coupon.getFaceValue();
+                        }
+                    } else if ("discount".equals(couponType)) {
+                        // 折扣券
+                        couponDiscountAmount = afterMemberDiscount.multiply(BigDecimal.ONE.subtract(coupon.getFaceValue().divide(new BigDecimal("10"), 2, java.math.RoundingMode.HALF_UP))).setScale(2, java.math.RoundingMode.HALF_UP);
+                    } else {
+                        // 其他类型（new_user, general等）直接减面值
+                        couponDiscountAmount = coupon.getFaceValue();
+                    }
+                    uc.setStatus("used");
+                    uc.setUseTime(LocalDateTime.now());
+                    userCouponMapper.updateById(uc);
+                }
+            }
+        }
+
+        // 总优惠 = 会员折扣 + 优惠券
+        BigDecimal totalDiscount = memberDiscountAmount.add(couponDiscountAmount);
+        BigDecimal payAmount = totalAmount.subtract(totalDiscount);
+        if (payAmount.compareTo(BigDecimal.ZERO) < 0) payAmount = BigDecimal.ZERO;
+
         // Create order
         OrderInfo order = new OrderInfo();
         order.setOrderNo(orderNo); order.setUserId(userId);
-        order.setTotalAmount(totalAmount); order.setPayAmount(totalAmount);
-        order.setPlanAmount(totalAmount); order.setActualAmount(totalAmount);
-        order.setFreightAmount(BigDecimal.ZERO); order.setDiscountAmount(BigDecimal.ZERO);
+        order.setTotalAmount(totalAmount); order.setPayAmount(payAmount);
+        order.setPlanAmount(payAmount); order.setActualAmount(payAmount);
+        order.setFreightAmount(BigDecimal.ZERO); order.setDiscountAmount(totalDiscount);
         order.setTotalQuantity(totalQty); order.setOrderStatus(0);
         order.setReceiverName(receiverName); order.setReceiverPhone(receiverPhone);
         order.setReceiverProvince(province); order.setReceiverCity(city);
@@ -120,9 +178,11 @@ public class OrderServiceImpl implements OrderService {
             oi.setIsComment(0); oi.setCreateTime(LocalDateTime.now());
             orderItemMapper.insert(oi);
 
-            p.setStock(p.getStock() - item.getQuantity());
-            p.setSales((p.getSales() != null ? p.getSales() : 0) + item.getQuantity());
-            productMapper.updateById(p);
+            // Bug #33/#35 fix: 原子UPDATE扣库存
+            int affected = productMapper.deductStock(item.getProductId(), item.getQuantity());
+            if (affected == 0) {
+                throw new RuntimeException("out of stock: " + p.getProductName());
+            }
         }
 
         // Clear cart items if cart order
@@ -148,7 +208,9 @@ public class OrderServiceImpl implements OrderService {
         Map<String, Object> result = new java.util.HashMap<>();
         result.put("orderId", String.valueOf(order.getId()));  // 返回字符串避免JS精度丢失
         result.put("orderNo", orderNo);
-        result.put("total", totalAmount);
+        result.put("total", payAmount);  // 返回折后价（会员折扣+优惠券）
+        result.put("originalTotal", totalAmount);  // 原价
+        result.put("discount", totalDiscount);  // 总优惠
         return result;
     }
 
@@ -222,11 +284,15 @@ public class OrderServiceImpl implements OrderService {
     public void pay(Long id) {
         OrderInfo o = orderInfoMapper.selectById(id);
         if (o == null || !o.getUserId().equals(UserContext.getUserId())) throw new RuntimeException("order not found");
-        if (o.getOrderStatus() != 0) throw new RuntimeException("can only pay unpaid order");
-        o.setOrderStatus(1);
-        o.setPayType(1);
-        o.setPayTime(LocalDateTime.now());
-        orderInfoMapper.updateById(o);
+        // Bug #22 fix: 支付幂等
+        if (o.getOrderStatus() == 1) { return; }
+        if (o.getOrderStatus() != 0) throw new RuntimeException("订单状态不允许支付");
+        int updated = orderInfoMapper.update(null,
+                new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<OrderInfo>()
+                        .set(OrderInfo::getOrderStatus, 1).set(OrderInfo::getPayType, 1)
+                        .set(OrderInfo::getPayTime, LocalDateTime.now())
+                        .eq(OrderInfo::getId, id).eq(OrderInfo::getOrderStatus, 0));
+        if (updated == 0) { return; }
 
         PaymentInfo pay = paymentInfoMapper.selectOne(
                 new LambdaQueryWrapper<PaymentInfo>().eq(PaymentInfo::getOrderId, o.getId()));
@@ -264,12 +330,60 @@ public class OrderServiceImpl implements OrderService {
         o.setCancelTime(LocalDateTime.now());
         orderInfoMapper.updateById(o);
 
+        // 返还优惠券（删除使用记录，让用户可以重新领取）
+        if (o.getCouponId() != null) {
+            userCouponMapper.delete(new LambdaQueryWrapper<UserCoupon>()
+                    .eq(UserCoupon::getUserId, o.getUserId())
+                    .eq(UserCoupon::getCouponId, o.getCouponId())
+                    .eq(UserCoupon::getStatus, "used"));
+            // 回退优惠券领取数
+            couponMapper.update(null, new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<Coupon>()
+                    .setSql("taken_count = GREATEST(taken_count - 1, 0)").eq(Coupon::getId, o.getCouponId()));
+        }
+
         // 已支付的订单标记退款
         PaymentInfo pay = paymentInfoMapper.selectOne(
                 new LambdaQueryWrapper<PaymentInfo>().eq(PaymentInfo::getOrderId, o.getId()));
         if (pay != null && pay.getPayStatus() == 1) {
             pay.setPayStatus(3);
             paymentInfoMapper.updateById(pay);
+
+            // 会员卡支付的订单，退款到余额
+            if (o.getPayType() != null && o.getPayType() == 3) {
+                SysUser user = userMapper.selectById(o.getUserId());
+                if (user != null) {
+                    BigDecimal refundAmount = o.getPayAmount() != null ? o.getPayAmount() : o.getTotalAmount();
+                    user.setBalance(user.getBalance().add(refundAmount));
+                    userMapper.updateById(user);
+                }
+            }
+
+            // 扣除该订单获得的积分
+            BigDecimal paidAmount = o.getPayAmount() != null ? o.getPayAmount() : o.getTotalAmount();
+            SysUser paidUser = userMapper.selectById(o.getUserId());
+            int memberLevel = paidUser != null && paidUser.getMemberLevel() != null ? paidUser.getMemberLevel() : 0;
+            int pointsRate = 1;
+            if (memberLevel > 0) {
+                MemberLevelConfig config = memberLevelConfigMapper.selectOne(
+                        new LambdaQueryWrapper<MemberLevelConfig>().eq(MemberLevelConfig::getLevel, memberLevel));
+                if (config != null && config.getPointsRate() != null) pointsRate = config.getPointsRate();
+            }
+            int deductPoints = paidAmount.intValue() * pointsRate;
+            if (deductPoints > 0) {
+                MemberPoint mp = memberPointMapper.selectById(o.getUserId());
+                if (mp != null) {
+                    mp.setAvailablePoint(Math.max(0, mp.getAvailablePoint() - deductPoints));
+                    mp.setTotalPoint(Math.max(0, mp.getTotalPoint() - deductPoints));
+                    memberPointMapper.updateById(mp);
+
+                    PointLog log = new PointLog();
+                    log.setUserId(o.getUserId()); log.setType("refund");
+                    log.setPoint(-deductPoints); log.setBalance(mp.getAvailablePoint());
+                    log.setRemark("取消订单扣除积分");
+                    log.setCreateTime(LocalDateTime.now());
+                    pointLogMapper.insert(log);
+                }
+            }
         }
 
         OrderLog log = new OrderLog();

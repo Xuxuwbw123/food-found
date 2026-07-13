@@ -113,7 +113,7 @@
     </div>
     <h4 style="margin:16px 0 8px">优惠券</h4>
     <el-select v-model="selCouponId" placeholder="选择优惠券（可选）" clearable style="width:100%" @change="calcDiscount">
-      <el-option v-for="c in coupons" :key="c.id" :label="c.name+' ¥'+c.faceValue+(c.minAmount>0?' (满'+c.minAmount+')':'')" :value="c.id" />
+      <el-option v-for="c in coupons" :key="c.id" :label="c.name+' ¥'+c.faceValue+(c.minAmount>0?' (满'+c.minAmount+')':'')" :value="c.couponId" />
     </el-select>
     <div v-if="discount>0" style="text-align:right;color:#f56c6c;margin-top:8px">优惠：-¥{{discount}}</div>
     <div style="text-align:right;margin-top:12px;font-size:20px;font-weight:700;color:#f56c6c">实付：¥{{ actualTotal }}</div>

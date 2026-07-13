@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 
 @Data
 @TableName("product")
@@ -28,6 +29,9 @@ public class Product {
     private Integer isTraceable;
     private Long traceId;
     private Integer status;
+    private Integer isPresale;
+    private LocalDate presaleStart;
+    private LocalDate presaleEnd;
     private Integer auditStatus;
     private String auditRemark;
     private Integer isRecommend;

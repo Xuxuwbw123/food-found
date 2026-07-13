@@ -106,6 +106,12 @@
           <el-form :model="traceForm" label-width="80px">
             <el-form-item label="产品名称" prop="productName"><el-input v-model="traceForm.productName" /></el-form-item>
             <el-form-item label="批次号" prop="batchNo"><el-input v-model="traceForm.batchNo" placeholder="如 B20250701" /></el-form-item>
+            <el-form-item label="种植基地">
+              <el-select v-model="traceForm.locationId" placeholder="选择已审核的种植基地" style="width:100%" @change="onLocationChange">
+                <el-option v-for="loc in myLocations" :key="loc.id" :label="loc.locationName + ' (' + loc.address + ')'" :value="loc.id" />
+              </el-select>
+              <div style="color:#999;font-size:12px;margin-top:4px">如无可用基地，请先申请农户认证并等待审核通过</div>
+            </el-form-item>
             <el-form-item label="产地" prop="originPlace"><el-input v-model="traceForm.originPlace" /></el-form-item>
             <el-form-item label="农场名称"><el-input v-model="traceForm.farmName" /></el-form-item>
             <el-form-item label="负责人"><el-input v-model="traceForm.responsiblePerson" /></el-form-item>
@@ -159,16 +165,23 @@
     </el-dialog>
 
     <!-- 认证申请 -->
-    <el-dialog title="农户认证申请" v-model="showApply" width="500px">
-      <el-form :model="applyForm" ref="applyFormRef" label-width="80px">
+    <el-dialog title="农户认证申请" v-model="showApply" width="580px">
+      <el-form :model="applyForm" ref="applyFormRef" label-width="90px">
         <el-form-item label="农场名称" prop="farmerName"><el-input v-model="applyForm.farmerName" /></el-form-item>
         <el-form-item label="联系人" prop="contactPerson"><el-input v-model="applyForm.contactPerson" /></el-form-item>
         <el-form-item label="联系电话" prop="contactPhone"><el-input v-model="applyForm.contactPhone" /></el-form-item>
-        <el-form-item label="省"><el-input v-model="applyForm.province" /></el-form-item>
-        <el-form-item label="市"><el-input v-model="applyForm.city" /></el-form-item>
-        <el-form-item label="区"><el-input v-model="applyForm.district" /></el-form-item>
-        <el-form-item label="详细地址"><el-input v-model="applyForm.address" /></el-form-item>
-        <el-form-item label="农场面积(亩)"><el-input-number v-model="applyForm.farmArea" :min="1" /></el-form-item>
+        <el-form-item label="农场地址">
+          <el-input v-model="applyForm.fullAddress" placeholder="输入详细地址，如：武汉市蔡甸区XX农场">
+            <template #append>
+              <el-button @click="geocodeAddress" :loading="geocoding">解析坐标</el-button>
+            </template>
+          </el-input>
+          <div v-if="applyForm.longitude" style="margin-top:6px;font-size:12px;color:#52c41a">
+            ✓ 已定位：{{ applyForm.latitude }}, {{ applyForm.longitude }}
+          </div>
+          <div ref="applyMapContainer" v-show="applyForm.longitude" style="width:100%;height:200px;margin-top:8px;border-radius:8px;overflow:hidden"></div>
+        </el-form-item>
+        <el-form-item label="农场面积(亩)"><el-input-number v-model="applyForm.farmArea" :min="1" style="width:100%" /></el-form-item>
         <el-form-item label="主营产品"><el-input v-model="applyForm.mainProducts" type="textarea" /></el-form-item>
       </el-form>
       <template #footer>
@@ -204,7 +217,20 @@ const selectedFile = ref(null)
 const uploading = ref(false)
 const fileInput = ref(null)
 
-const traceForm = reactive({ productName: '', batchNo: '', originPlace: '', farmName: '', responsiblePerson: '' })
+const traceForm = reactive({ productName: '', batchNo: '', originPlace: '', farmName: '', responsiblePerson: '', locationId: null })
+const myLocations = ref([])
+
+async function loadMyLocations() {
+  try { const r = await axios.get('/api/locations/my'); myLocations.value = r.data.data || [] } catch {}
+}
+
+function onLocationChange(locId) {
+  const loc = myLocations.value.find(l => l.id === locId)
+  if (loc) {
+    traceForm.originPlace = loc.address || ''
+    traceForm.farmName = loc.locationName || ''
+  }
+}
 const productForm = reactive({ mainImage: '', price: 0, originalPrice: 0, stock: 100, unit: 'kg', weight: '', description: '' })
 const productImgFile = ref(null)
 const imgUploading2 = ref(false)
@@ -223,7 +249,52 @@ async function uploadProductImage() {
   } catch { ElMessage.error('上传失败') }
   finally { imgUploading2.value = false }
 }
-const applyForm = reactive({ farmerName: '', contactPerson: '', contactPhone: '', province: '', city: '', district: '', address: '', farmArea: 50, mainProducts: '' })
+const applyForm = reactive({ farmerName: '', contactPerson: '', contactPhone: '', province: '', city: '', district: '', address: '', fullAddress: '', longitude: null, latitude: null, farmArea: 50, mainProducts: '' })
+const geocoding = ref(false)
+const applyMapContainer = ref(null)
+
+async function geocodeAddress() {
+  if (!applyForm.fullAddress) return ElMessage.warning('请先输入农场地址')
+  geocoding.value = true
+  try {
+    const r = await axios.get('/api/geocode', { params: { address: applyForm.fullAddress } })
+    const d = r.data.data
+    applyForm.longitude = d.longitude
+    applyForm.latitude = d.latitude
+    applyForm.province = d.province || ''
+    applyForm.city = d.city || ''
+    applyForm.district = d.district || ''
+    applyForm.address = applyForm.fullAddress
+    ElMessage.success('坐标解析成功')
+    setTimeout(() => renderApplyMap(), 300)
+  } catch (e) { ElMessage.error(e.response?.data?.msg || '地址解析失败，请输入更详细的地址') }
+  finally { geocoding.value = false }
+}
+
+function renderApplyMap() {
+  if (!applyMapContainer.value || !window.AMap) {
+    const script = document.createElement('script')
+    script.src = 'https://webapi.amap.com/maps?v=2.0&key=202efb721c5ede9efc4f1b7343cd0cdd'
+    script.onload = () => renderApplyMap()
+    document.head.appendChild(script)
+    return
+  }
+  const map = new window.AMap.Map(applyMapContainer.value, {
+    zoom: 15,
+    center: [applyForm.longitude, applyForm.latitude],
+    mapStyle: 'amap://styles/normal'
+  })
+  new window.AMap.Marker({
+    position: [applyForm.longitude, applyForm.latitude],
+    draggable: true,
+    label: { content: applyForm.farmerName || '农场位置', offset: new window.AMap.Pixel(0, -30) }
+  }).on('dragend', (e) => {
+    applyForm.longitude = parseFloat(e.lnglat.getLng().toFixed(6))
+    applyForm.latitude = parseFloat(e.lnglat.getLat().toFixed(6))
+    ElMessage.info('位置已微调')
+  })
+  map.add(map.getAllOverlays())
+}
 
 async function loadFarmer() {
   if (!auth.isLoggedIn) return router.push('/login')
@@ -249,9 +320,15 @@ async function addTrace() {
   saving.value = true
   try {
     // 1. 创建溯源批次
+    // Bug #5 fix: 用户填写的 responsiblePerson 优先生效
     const traceRes = await axios.post('/api/trace/create', {
-      ...traceForm, farmerId: farmer.value.id, farmName: farmer.value.farmerName,
-      responsiblePerson: farmer.value.contactPerson
+      farmerId: farmer.value.id,
+      farmName: farmer.value.farmName || farmer.value.farmerName,
+      responsiblePerson: farmer.value.contactPerson,
+      ...traceForm,
+      responsiblePerson: (traceForm.responsiblePerson && traceForm.responsiblePerson.trim())
+        ? traceForm.responsiblePerson.trim()
+        : farmer.value.contactPerson
     })
     const traceId = traceRes.data.data?.id || traceRes.data
     // 2. 同时创建产品（待审核）
@@ -259,7 +336,7 @@ async function addTrace() {
       productName: traceForm.productName,
       farmerId: farmer.value.id,
       traceId: traceId,
-      categoryId: 12,
+      categoryId: productForm.categoryId || 8000000000000001,  // Bug #6 fix
       productNo: 'P' + Date.now(),
       originPlace: traceForm.originPlace,
       ...productForm
@@ -368,7 +445,7 @@ async function doDeliver() {
 }
 
 watch(() => farmer.value.id, () => { loadTraces(); loadOrders() })
-onMounted(() => { loadFarmer(); if (farmer.value.id) loadOrders() })
+onMounted(() => { loadFarmer(); loadMyLocations(); if (farmer.value.id) loadOrders() })
 </script>
 
 <style scoped>

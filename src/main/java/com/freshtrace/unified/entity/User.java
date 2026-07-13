@@ -22,6 +22,8 @@ public class User {
     private String realName;
     private String idCard;
     private BigDecimal balance;
+    private Integer memberLevel;
+    private BigDecimal totalSpent;
     private LocalDateTime lastLoginTime;
     private String lastLoginIp;
     private String remark;

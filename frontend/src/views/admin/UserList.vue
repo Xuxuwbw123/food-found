@@ -34,6 +34,19 @@
         </el-form-item>
       </el-form>
 
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding:8px 12px;background:#f5f7fa;border-radius:6px">
+        <span style="font-size:13px;color:#666">共 {{ total }} 条记录，第 {{ query.pageNum }} 页</span>
+        <div>
+          <el-button size="small" :disabled="query.pageNum<=1" @click="query.pageNum--;loadData()">上一页</el-button>
+          <el-button size="small" :disabled="query.pageNum*query.pageSize>=total" @click="query.pageNum++;loadData()">下一页</el-button>
+          <el-select v-model="query.pageSize" size="small" style="width:90px;margin-left:8px" @change="query.pageNum=1;loadData()">
+            <el-option :value="10" label="10条/页" />
+            <el-option :value="20" label="20条/页" />
+            <el-option :value="50" label="50条/页" />
+          </el-select>
+        </div>
+      </div>
+
       <el-table :data="tableData" border stripe v-loading="loading" style="width:100%" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="50" />
         <el-table-column prop="id" label="ID" width="100" />
@@ -46,6 +59,13 @@
             <el-tag :type="typeTag(row.userType)" size="small">{{ typeText(row.userType) }}</el-tag>
           </template>
         </el-table-column>
+        <el-table-column label="会员等级" width="100">
+          <template #default="{ row }">
+            <el-tag :type="['','success','warning','danger'][row.memberLevel]||'info'" size="small">{{ levelText(row.memberLevel) }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="余额" width="90"><template #default="{ row }">¥{{ row.balance || 0 }}</template></el-table-column>
+        <el-table-column label="累计消费" width="100"><template #default="{ row }">¥{{ row.totalSpent || 0 }}</template></el-table-column>
         <el-table-column label="状态" width="90">
           <template #default="{ row }">
             <el-switch :model-value="row.status === 1" @change="toggleStatus(row)" />
@@ -63,19 +83,9 @@
             </el-popconfirm>
           </template>
         </el-table-column>
+
       </el-table>
 
-      <div class="pagination">
-        <el-pagination
-          v-model:current-page="query.pageNum"
-          v-model:page-size="query.pageSize"
-          :page-sizes="[10,20,50]"
-          layout="total, sizes, prev, pager, next, jumper"
-          :total="total"
-          @size-change="loadData"
-          @current-change="loadData"
-        />
-      </div>
     </el-card>
 
     <el-dialog :title="dialogTitle" v-model="dialogVisible" width="550px" @close="resetForm">
@@ -173,6 +183,7 @@ function typeTag(type) {
 function typeText(type) {
   return type === 1 ? '普通用户' : type === 2 ? '农户' : '管理员'
 }
+function levelText(l) { return {0:'普通用户',1:'普通会员',2:'银卡会员',3:'金卡会员'}[l]||'普通用户' }
 
 async function loadData() {
   loading.value = true

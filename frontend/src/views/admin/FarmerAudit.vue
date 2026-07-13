@@ -6,6 +6,19 @@
         <el-form-item label="状态"><el-select v-model="query.status" placeholder="全部" clearable @change="loadData"><el-option label="待审核" :value="0" /><el-option label="已通过" :value="1" /><el-option label="已驳回" :value="2" /></el-select></el-form-item>
         <el-form-item><el-button type="primary" @click="loadData">搜索</el-button></el-form-item>
       </el-form>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding:8px 12px;background:#f5f7fa;border-radius:6px">
+        <span style="font-size:13px;color:#666">共 {{ total }} 条记录，第 {{ query.pageNum }} 页</span>
+        <div>
+          <el-button size="small" :disabled="query.pageNum<=1" @click="query.pageNum--;loadData()">上一页</el-button>
+          <el-button size="small" :disabled="query.pageNum*query.pageSize>=total" @click="query.pageNum++;loadData()">下一页</el-button>
+          <el-select v-model="query.pageSize" size="small" style="width:90px;margin-left:8px" @change="query.pageNum=1;loadData()">
+            <el-option :value="10" label="10条/页" />
+            <el-option :value="20" label="20条/页" />
+            <el-option :value="50" label="50条/页" />
+          </el-select>
+        </div>
+      </div>
+
       <el-table :data="tableData" border stripe v-loading="loading">
         <el-table-column prop="id" label="ID" width="160" />
         <el-table-column prop="farmerName" label="农场名称" width="150" />
@@ -24,10 +37,9 @@
           </template>
         </el-table-column>
       </el-table>
-      <div class="pagination"><el-pagination v-model:current-page="query.pageNum" v-model:page-size="query.pageSize" :page-sizes="[10,20,50]" layout="total,sizes,prev,pager,next,jumper" :total="total" @size-change="loadData" @current-change="loadData" /></div>
     </el-card>
 
-    <el-dialog v-model="detailVisible" title="农户资质详情" width="600px">
+    <el-dialog v-model="detailVisible" title="农户资质详情" width="650px">
       <el-descriptions :column="2" border v-if="detail.id">
         <el-descriptions-item label="农场名称">{{detail.farmerName}}</el-descriptions-item>
         <el-descriptions-item label="联系人">{{detail.contactPerson}}</el-descriptions-item>
@@ -38,6 +50,10 @@
         <el-descriptions-item label="审核状态" :span="2"><el-tag :type="detail.auditStatus===1?'success':detail.auditStatus===2?'danger':'warning'">{{detail.auditStatus===1?'已通过':detail.auditStatus===2?'已驳回':'待审核'}}</el-tag></el-descriptions-item>
         <el-descriptions-item v-if="detail.auditRemark" label="审核意见" :span="2">{{detail.auditRemark}}</el-descriptions-item>
       </el-descriptions>
+      <div v-if="detail.longitude && detail.latitude" style="margin-top:16px">
+        <h4 style="margin-bottom:8px">农场位置</h4>
+        <div ref="detailMapContainer" style="width:100%;height:300px;border-radius:8px;overflow:hidden"></div>
+      </div>
     </el-dialog>
   </div>
 </template>
@@ -48,13 +64,39 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import axios from 'axios'
 const query = reactive({ pageNum:1, pageSize:10, status:null })
 const tableData = ref([]); const total = ref(0); const loading = ref(false)
-const detailVisible = ref(false); const detail = ref({})
+const detailVisible = ref(false); const detail = ref({}); const detailMapContainer = ref(null)
 
 async function loadData() {
   loading.value = true
   try { const params={...query}; Object.keys(params).forEach(k=>(params[k]===''||params[k]===null)&&delete params[k]); const r=await axios.get('/api/admin/farmer/audit/list',{params}); tableData.value=r.data.data?.records||[]; total.value=r.data.data?.total||0 } finally { loading.value = false }
 }
-async function viewDetail(row) { const r=await axios.get(`/api/admin/farmer/audit/detail/${row.id}`); detail.value=r.data.data||{}; detailVisible.value=true }
+async function viewDetail(row) {
+  const r = await axios.get(`/api/admin/farmer/audit/detail/${row.id}`)
+  detail.value = r.data.data || {}
+  detailVisible.value = true
+  if (detail.value.longitude && detail.value.latitude) {
+    setTimeout(() => renderDetailMap(), 300)
+  }
+}
+
+function renderDetailMap() {
+  if (!detailMapContainer.value || !window.AMap) {
+    const script = document.createElement('script')
+    script.src = 'https://webapi.amap.com/maps?v=2.0&key=202efb721c5ede9efc4f1b7343cd0cdd'
+    script.onload = () => renderDetailMap()
+    document.head.appendChild(script)
+    return
+  }
+  const map = new window.AMap.Map(detailMapContainer.value, {
+    zoom: 15,
+    center: [detail.value.longitude, detail.value.latitude],
+    mapStyle: 'amap://styles/normal'
+  })
+  map.add(new window.AMap.Marker({
+    position: [detail.value.longitude, detail.value.latitude],
+    label: { content: detail.value.farmerName || '农场位置', offset: new window.AMap.Pixel(0, -30) }
+  }))
+}
 function audit(row, approve) {
   const action = approve ? '通过' : '驳回'
   ElMessageBox.prompt(action==='驳回'?'请输入驳回原因':'确认通过该申请？', action, { confirmButtonText:'确定', cancelButtonText:'取消', inputType: action==='驳回'?'textarea':undefined }).then(async ({value})=>{

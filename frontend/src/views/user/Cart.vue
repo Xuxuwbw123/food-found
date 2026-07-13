@@ -13,7 +13,13 @@
       </el-table>
       <el-empty v-else description="购物车是空的"/>
       <div v-if="list.length" style="text-align:right;margin-top:20px">
-        <span style="font-size:20px;font-weight:700;color:#f56c6c">合计：¥{{ total }}</span>
+        <div v-if="memberLevel>0" style="font-size:13px;color:#52c41a;margin-bottom:4px">
+          会员{{(discountRate*10).toFixed(1)}}折，省 ¥{{memberSavings}}
+        </div>
+        <div v-if="discount>0" style="font-size:13px;color:#f56c6c;margin-bottom:4px">
+          优惠券 -¥{{discount}}
+        </div>
+        <span style="font-size:20px;font-weight:700;color:#f56c6c">合计：¥{{ actualTotal }}</span>
         <el-button type="danger" size="large" style="margin-left:16px" @click="openCheckout">结算</el-button>
       </div>
     </div>
@@ -31,10 +37,13 @@
       </div>
       <h4 style="margin:16px 0 8px">优惠券</h4>
       <el-select v-model="selCouponId" placeholder="选择优惠券（可选）" clearable style="width:100%" @change="calcDiscount">
-        <el-option v-for="c in coupons" :key="c.id" :label="c.name+' ¥'+c.faceValue+(c.minAmount>0?' (满'+c.minAmount+')':'')" :value="c.id" />
+        <el-option v-for="c in coupons" :key="c.id" :label="c.name+' ¥'+c.faceValue+(c.minAmount>0?' (满'+c.minAmount+')':'')" :value="c.couponId" />
       </el-select>
-      <div v-if="discount>0" style="text-align:right;color:#f56c6c;margin-top:8px;font-size:14px">优惠：-¥{{discount}}，实付：<b>¥{{actualTotal}}</b></div>
-      <div style="text-align:right;margin-top:12px;font-size:20px;font-weight:700;color:#f56c6c">合计：¥{{ actualTotal }}</div>
+      <div style="text-align:right;margin-top:8px;font-size:13px">
+        <div v-if="memberLevel>0" style="color:#52c41a">会员{{(discountRate*10).toFixed(1)}}折：-¥{{memberSavings}}</div>
+        <div v-if="discount>0" style="color:#f56c6c">优惠券：-¥{{discount}}</div>
+      </div>
+      <div style="text-align:right;margin-top:8px;font-size:20px;font-weight:700;color:#f56c6c">合计：¥{{ actualTotal }}</div>
       <template #footer>
         <el-button @click="showAddr=false">取消</el-button>
         <el-button type="danger" @click="doCheckout" :loading="paying">确认下单</el-button>
@@ -56,10 +65,20 @@ const list = ref([]); const loading = ref(false); const paying = ref(false)
 const showAddr = ref(false); const addresses = ref([]); const selAddr = ref(null)
 const total = computed(()=>list.value.reduce((s,i)=>s+i.price*i.quantity,0).toFixed(2))
 const coupons = ref([]); const selCouponId = ref(null); const discount = ref(0)
-const actualTotal = computed(()=>Math.max(0,parseFloat(total.value)-discount.value).toFixed(2))
+const memberDiscount = ref(0); const memberLevel = ref(0); const discountRate = ref(1)
+const memberSavings = computed(()=>(parseFloat(total.value)*(1-discountRate.value)).toFixed(2))
+const actualTotal = computed(()=>Math.max(0,parseFloat(total.value)-parseFloat(memberSavings.value)-discount.value).toFixed(2))
 
 async function loadCoupons() {
   try { const r = await axios.get('/api/coupon/my',{params:{status:'unused'}}); coupons.value = r.data.data || [] } catch {}
+}
+async function loadMemberInfo() {
+  try {
+    const r = await axios.get('/api/member/info')
+    const d = r.data.data
+    memberLevel.value = d.memberLevel || 0
+    discountRate.value = d.discountRate || 1
+  } catch {}
 }
 function calcDiscount() {
   const c = coupons.value.find(c=>c.id===selCouponId.value)
@@ -101,7 +120,7 @@ async function doCheckout() {
   finally { paying.value = false }
 }
 
-onMounted(()=>{if(auth.isLoggedIn)load()})
+onMounted(()=>{if(auth.isLoggedIn){load();loadMemberInfo()}})
 </script>
 
 <style scoped>

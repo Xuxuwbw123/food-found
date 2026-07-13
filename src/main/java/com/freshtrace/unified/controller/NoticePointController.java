@@ -25,6 +25,7 @@ public class NoticePointController {
     @Autowired private UserFootprintService footprintService;
     @Autowired private UserCouponService userCouponService;
     @Autowired private CouponService couponService;
+    @Autowired private com.freshtrace.unified.mapper.CouponMapper couponMapper;
 
     // ============ 通知 ============
     @GetMapping("/notice/list")
@@ -117,9 +118,10 @@ public class NoticePointController {
     public Result<?> availableCoupons(HttpServletRequest request) {
         Long userId = (Long) request.getAttribute("userId");
         java.time.LocalDateTime now = java.time.LocalDateTime.now();
-        // 查询所有启用的优惠券（不过滤已领取的）
+        // 查询启用且未过期的优惠券
         List<Coupon> allCoupons = couponService.list(new LambdaQueryWrapper<Coupon>()
                 .eq(Coupon::getStatus, 1)
+                .and(w -> w.isNull(Coupon::getEndTime).or().gt(Coupon::getEndTime, now))
                 .orderByDesc(Coupon::getCreateTime));
         List<Map<String, Object>> available = new java.util.ArrayList<>();
         for (Coupon c : allCoupons) {
@@ -143,22 +145,36 @@ public class NoticePointController {
     }
 
     @PostMapping("/coupon/take/{couponId}")
+    @org.springframework.transaction.annotation.Transactional
     public Result<?> takeCoupon(@PathVariable Long couponId, HttpServletRequest request) {
         Long userId = (Long) request.getAttribute("userId");
-        Coupon c = couponService.getById(couponId);
-        if (c == null || c.getStatus() != 1) return Result.error(404, "优惠券不存在");
-        java.time.LocalDateTime now = java.time.LocalDateTime.now();
-        if (c.getStartTime() != null && c.getStartTime().isAfter(now)) return Result.error(400, "优惠券未开始");
-        if (c.getEndTime() != null && c.getEndTime().isBefore(now)) return Result.error(400, "优惠券已过期");
-        if (c.getTakenCount() >= c.getTotalCount()) return Result.error(400, "已领完");
+        // Bug #16 fix: 原子领券
+        int affected = couponMapper.atomicTake(couponId);
+        if (affected == 0) {
+            Coupon c = couponService.getById(couponId);
+            if (c == null || c.getStatus() != 1) return Result.error(404, "优惠券不存在");
+            java.time.LocalDateTime now = java.time.LocalDateTime.now();
+            if (c.getStartTime() != null && c.getStartTime().isAfter(now)) return Result.error(400, "优惠券未开始");
+            if (c.getEndTime() != null && c.getEndTime().isBefore(now)) return Result.error(400, "优惠券已过期");
+            return Result.error(400, "已领完");
+        }
         long existCount = userCouponService.count(new LambdaQueryWrapper<UserCoupon>()
-                .eq(UserCoupon::getUserId, userId).eq(UserCoupon::getCouponId, couponId));
-        if (existCount > 0) return Result.error(400, "已领取过");
-        UserCoupon uc = new UserCoupon();
-        uc.setUserId(userId); uc.setCouponId(couponId); uc.setStatus("unused");
-        uc.setTakeTime(now);
-        userCouponService.save(uc);
-        c.setTakenCount(c.getTakenCount() + 1); couponService.updateById(c);
+                .eq(UserCoupon::getUserId, userId).eq(UserCoupon::getCouponId, couponId).eq(UserCoupon::getStatus, "unused"));
+        if (existCount > 0) {
+            couponMapper.update(null, new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<Coupon>()
+                    .setSql("taken_count = taken_count - 1").eq(Coupon::getId, couponId));
+            return Result.error(400, "已领取过，请先使用后再领取");
+        }
+        try {
+            UserCoupon uc = new UserCoupon();
+            uc.setUserId(userId); uc.setCouponId(couponId); uc.setStatus("unused");
+            uc.setTakeTime(java.time.LocalDateTime.now());
+            userCouponService.save(uc);
+        } catch (org.springframework.dao.DuplicateKeyException dup) {
+            couponMapper.update(null, new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<Coupon>()
+                    .setSql("taken_count = taken_count - 1").eq(Coupon::getId, couponId));
+            return Result.error(400, "已领取过");
+        }
         return Result.success("领取成功", null);
     }
 

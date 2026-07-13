@@ -10,6 +10,12 @@ const routes = [
     meta: { title: '登录' }
   },
   {
+    path: '/qrcode-scan/:code',
+    name: 'QrcodeScan',
+    component: () => import('../views/user/QrcodeScan.vue'),
+    meta: { title: '溯源验证' }
+  },
+  {
     path: '/register',
     name: 'Register',
     component: () => import('../views/Register.vue'),
@@ -46,7 +52,18 @@ const routes = [
       { path: 'coupons', name: 'CouponManage', component: () => import('../views/admin/CouponManage.vue'), meta: { title: '优惠券管理' } },
       { path: 'seckill', name: 'SeckillManage', component: () => import('../views/admin/SeckillManage.vue'), meta: { title: '秒杀管理' } },
       { path: 'members', name: 'MemberManage', component: () => import('../views/admin/MemberManage.vue'), meta: { title: '会员管理' } },
-      { path: 'marketing', name: 'MarketingManage', component: () => import('../views/admin/MarketingManage.vue'), meta: { title: '营销管理' } }
+      { path: 'marketing', name: 'MarketingManage', component: () => import('../views/admin/MarketingManage.vue'), meta: { title: '营销管理' } },
+      { path: 'group-buy', name: 'GroupBuyManage', component: () => import('../views/admin/GroupBuyManage.vue'), meta: { title: '拼团管理' } },
+      { path: 'themes', name: 'ThemeZoneManage', component: () => import('../views/admin/ThemeZoneManage.vue'), meta: { title: '主题专区' } },
+      { path: 'mystery-boxes', name: 'MysteryBoxManage', component: () => import('../views/admin/MysteryBoxManage.vue'), meta: { title: '盲盒管理' } },
+      { path: 'recipes', name: 'RecipeManage', component: () => import('../views/admin/RecipeManage.vue'), meta: { title: '菜谱管理' } },
+      { path: 'stock-alerts', name: 'StockAlertManage', component: () => import('../views/admin/StockAlertManage.vue'), meta: { title: '库存预警' } },
+      { path: 'green-points-rules', name: 'GreenPointsRuleManage', component: () => import('../views/admin/GreenPointsRuleManage.vue'), meta: { title: '绿色积分规则' } },
+      { path: 'qualification-certs', name: 'QualificationCertManage', component: () => import('../views/admin/QualificationCertManage.vue'), meta: { title: '资质证书' } },
+      { path: 'farm-updates', name: 'FarmUpdateManage', component: () => import('../views/admin/FarmUpdateManage.vue'), meta: { title: '农场动态' } },
+      { path: 'trace-settings', name: 'TraceSettings', component: () => import('../views/admin/TraceSettings.vue'), meta: { title: '溯源设置' } },
+      { path: 'chat', name: 'ChatManage', component: () => import('../views/admin/ChatManage.vue'), meta: { title: '客服会话' } },
+      { path: 'ai-settings', name: 'AiSettings', component: () => import('../views/admin/AiSettings.vue'), meta: { title: 'AI客服设置' } }
     ]
   },
   {
@@ -56,6 +73,7 @@ const routes = [
       { path: '', name: 'Home', component: () => import('../views/user/Home.vue'), meta: { title: '首页' } },
       { path: 'product/:id', name: 'ProductDetail', component: () => import('../views/user/ProductDetail.vue'), meta: { title: '商品详情' } },
       { path: 'trace', name: 'TraceQuery', component: () => import('../views/user/TraceQuery.vue'), meta: { title: '溯源查询' } },
+      { path: 'qrcode-verify', name: 'QrcodeVerify', component: () => import('../views/user/QrcodeVerify.vue'), meta: { title: '防伪验证' } },
       { path: 'trace/:batchNo', name: 'TraceResult', component: () => import('../views/user/TraceResult.vue'), meta: { title: '溯源结果' } },
       { path: 'farmer/:id', name: 'FarmerDetail', component: () => import('../views/user/FarmerDetail.vue'), meta: { title: '农户详情' } },
       { path: 'address', name: 'AddressList', component: () => import('../views/user/AddressList.vue'), meta: { title: '收货地址' } },
@@ -70,7 +88,21 @@ const routes = [
       { path: 'notices', name: 'NoticeCenter', component: () => import('../views/user/NoticeCenter.vue'), meta: { title: '消息中心' } },
       { path: 'points', name: 'MyPoints', component: () => import('../views/user/MyPoints.vue'), meta: { title: '我的积分' } },
       { path: 'footprints', name: 'MyFootprint', component: () => import('../views/user/MyFootprint.vue'), meta: { title: '浏览足迹' } },
-      { path: 'coupons', name: 'CouponCenter', component: () => import('../views/user/CouponCenter.vue'), meta: { title: '领券中心' } }
+      { path: 'coupons', name: 'CouponCenter', component: () => import('../views/user/CouponCenter.vue'), meta: { title: '领券中心' } },
+      { path: 'shop/:id', name: 'Shop', component: () => import('../views/user/Shop.vue'), meta: { title: '农户店铺' } },
+      { path: 'group-buy', name: 'GroupBuyList', component: () => import('../views/user/GroupBuyList.vue'), meta: { title: '拼团活动' } },
+      { path: 'themes', name: 'ThemeZone', component: () => import('../views/user/ThemeZone.vue'), meta: { title: '主题专区' } },
+      { path: 'mystery-boxes', name: 'MysteryBox', component: () => import('../views/user/MysteryBox.vue'), meta: { title: '惊喜盲盒' } },
+      { path: 'recipes', name: 'RecipeList', component: () => import('../views/user/RecipeList.vue'), meta: { title: '精选菜谱' } },
+      { path: 'recipe/:id', name: 'RecipeDetail', component: () => import('../views/user/RecipeDetail.vue'), meta: { title: '菜谱详情' } },
+      { path: 'growth-timeline', name: 'GrowthTimeline', component: () => import('../views/user/GrowthTimeline.vue'), meta: { title: '生长周期' } },
+      { path: 'farm-updates', name: 'FarmUpdate', component: () => import('../views/user/FarmUpdate.vue'), meta: { title: '农场动态' } },
+      { path: 'presale', name: 'PresaleZone', component: () => import('../views/user/PresaleZone.vue'), meta: { title: '预售专区' } },
+      { path: 'presale-confirm/:productId', name: 'PresaleConfirm', component: () => import('../views/user/PresaleConfirm.vue'), meta: { title: '预售确认' } },
+      { path: 'my-presale', name: 'MyPresale', component: () => import('../views/user/MyPresale.vue'), meta: { title: '我的预售' } },
+      { path: 'green-points', name: 'GreenPoints', component: () => import('../views/user/GreenPoints.vue'), meta: { title: '绿色积分' } },
+      { path: 'member', name: 'MemberCenter', component: () => import('../views/user/MemberCenter.vue'), meta: { title: '会员中心' } },
+      { path: 'chat', name: 'Chat', component: () => import('../views/user/Chat.vue'), meta: { title: '在线客服' } }
     ]
   },
   {
@@ -80,6 +112,7 @@ const routes = [
     children: [
       { path: '', name: 'FarmerDashboard', component: () => import('../views/farmer/Dashboard.vue'), meta: { title: '农户工作台' } },
       { path: 'trace/:id', name: 'FarmerTraceDetail', component: () => import('../views/farmer/TraceDetail.vue'), meta: { title: '溯源管理' } },
+      { path: 'presale-growth/:id', name: 'PresaleGrowth', component: () => import('../views/farmer/PresaleGrowth.vue'), meta: { title: '预售动态' } },
       { path: 'order/:id', name: 'FarmerOrderDetail', component: () => import('../views/farmer/FarmerOrderDetail.vue'), meta: { title: '订单详情' } }
     ]
   }

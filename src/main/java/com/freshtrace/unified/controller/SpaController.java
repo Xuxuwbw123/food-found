@@ -15,7 +15,10 @@ public class SpaController {
             "/", "/login", "/register",
             "/cart", "/orders", "/pay", "/profile", "/address",
             "/favorites", "/search", "/trace", "/notices",
-            "/points", "/footprints", "/coupons", "/after-sales"
+            "/points", "/footprints", "/coupons", "/after-sales",
+            "/qrcode-verify", "/qrcode-scan",
+            "/presale", "/presale-confirm", "/my-presale",
+            "/chat"
     })
     public String forward() {
         return "forward:/index.html";
@@ -50,7 +53,7 @@ public class SpaController {
             "/admin/operation-logs", "/admin/admins", "/admin/farmer-audit",
             "/admin/config", "/admin/member-level", "/admin/points-exchange",
             "/admin/coupons", "/admin/seckill",
-            "/admin/members", "/admin/marketing"
+            "/admin/members", "/admin/marketing", "/admin/chat"
     })
     public String forwardAdmin() {
         return "forward:/index.html";
@@ -88,6 +91,21 @@ public class SpaController {
 
     @RequestMapping("/farmer/order/{id}")
     public String forwardFarmerOrder() {
+        return "forward:/index.html";
+    }
+
+    @RequestMapping("/qrcode-scan/{code}")
+    public String forwardQrcodeScan() {
+        return "forward:/index.html";
+    }
+
+    @RequestMapping({
+            "/admin/group-buy", "/admin/themes", "/admin/mystery-boxes",
+            "/admin/recipes", "/admin/stock-alerts", "/admin/green-points-rules",
+            "/admin/qualification-certs", "/admin/farm-updates", "/admin/trace-location",
+            "/admin/trace-settings"
+    })
+    public String forwardAdminNew() {
         return "forward:/index.html";
     }
 }

@@ -27,6 +27,7 @@ public class MemberController {
     @Autowired private UserCouponService userCouponService;
     @Autowired private SysNoticeService noticeService;
     @Autowired private CouponService couponService;
+    @Autowired private PointLogService pointLogService;
 
     // ============ 会员等级配置（管理员） ============
     @GetMapping({"/admin/member-level/config", "/api/admin/member-level/config"})
@@ -173,6 +174,7 @@ public class MemberController {
 
         PointsExchangeRule rule = exchangeRuleService.getById(ruleId);
         if (rule == null || rule.getStatus() != 1) return Result.error(404, "兑换规则不存在");
+        if (rule.getCouponId() == null) return Result.error(400, "该兑换规则未关联优惠券，请联系管理员");
 
         MemberPoint mp = memberPointService.getById(userId);
         if (mp == null || mp.getAvailablePoint() < rule.getPointsCost()) {
@@ -184,12 +186,18 @@ public class MemberController {
         memberPointService.updateById(mp);
 
         // 发放优惠券
-        if (rule.getCouponId() != null) {
-            UserCoupon uc = new UserCoupon();
-            uc.setUserId(userId); uc.setCouponId(rule.getCouponId());
-            uc.setStatus("unused"); uc.setTakeTime(LocalDateTime.now());
-            userCouponService.save(uc);
-        }
+        UserCoupon uc = new UserCoupon();
+        uc.setUserId(userId); uc.setCouponId(rule.getCouponId());
+        uc.setStatus("unused"); uc.setTakeTime(LocalDateTime.now());
+        userCouponService.save(uc);
+
+        // 记录积分流水
+        PointLog log = new PointLog();
+        log.setUserId(userId); log.setType("use");
+        log.setPoint(-rule.getPointsCost()); log.setBalance(mp.getAvailablePoint());
+        log.setRemark("积分兑换：" + rule.getRuleName());
+        log.setCreateTime(LocalDateTime.now());
+        pointLogService.save(log);
 
         return Result.success("兑换成功", null);
     }

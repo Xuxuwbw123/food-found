@@ -37,6 +37,19 @@
       </div>
     </section>
 
+    <!-- 特色功能导航（暂隐藏部分功能，后端接口保留） -->
+    <section class="feature-section">
+      <div class="section-content">
+        <h3 class="section-title"><span>特色功能</span></h3>
+        <div class="feature-grid">
+          <div class="feature-card" @click="$router.push('/member')">
+            <div class="feature-icon" style="background:linear-gradient(135deg,#ffd89b,#19547b)">&#127942;</div>
+            <span>会员中心</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- 推荐商品 -->
     <section class="product-section">
       <div class="section-content">
@@ -176,6 +189,18 @@ onMounted(loadData)
 .price-original { color: #ccc; font-size: 13px; text-decoration: line-through; margin-left: 6px; }
 .product-sales { font-size: 12px; color: #999; }
 
-@media (max-width: 1024px) { .product-grid { grid-template-columns: repeat(3, 1fr); } }
+.presale-banner { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); cursor: pointer; }
+.presale-banner-inner { display: flex; justify-content: space-between; align-items: center; padding: 30px 0; }
+.presale-text h2 { color: #fff; font-size: 24px; margin-bottom: 4px; }
+.presale-text p { color: rgba(255,255,255,0.9); font-size: 14px; }
+
+.feature-section { background: #fff; margin-top: 2px; }
+.feature-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 16px; }
+.feature-card { background: #fff; border-radius: 12px; padding: 20px 10px; text-align: center; cursor: pointer; transition: all .3s; box-shadow: 0 2px 8px rgba(0,0,0,.04); border: 2px solid transparent; }
+.feature-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,.1); border-color: #1a8c3a; }
+.feature-icon { width: 56px; height: 56px; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 28px; margin: 0 auto 8px; }
+.feature-card span { font-size: 14px; font-weight: 500; }
+
+@media (max-width: 1024px) { .product-grid { grid-template-columns: repeat(3, 1fr); } .feature-grid { grid-template-columns: repeat(4, 1fr); } }
 @media (max-width: 768px) { .product-grid { grid-template-columns: repeat(2, 1fr); } }
 </style>

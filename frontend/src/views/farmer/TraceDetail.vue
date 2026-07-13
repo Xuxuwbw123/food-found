@@ -4,6 +4,7 @@
       <div class="page-header">
         <h2>溯源管理 — {{ trace.productName || '批次详情' }}</h2>
         <div style="display:flex;gap:8px">
+          <el-button type="warning" @click="showQrcode=true">🔐 生成溯源码</el-button>
           <el-button v-if="!hasProduct" type="success" @click="showPublish=true">📦 发布商品</el-button>
           <el-button @click="$router.back()">返回</el-button>
         </div>
@@ -94,6 +95,46 @@
         <el-button type="success" @click="publishProduct" :loading="publishing">提交审核</el-button>
       </template>
     </el-dialog>
+
+    <!-- 生成溯源码对话框 -->
+    <el-dialog title="批量生成溯源码" v-model="showQrcode" width="500px">
+      <el-form label-width="80px">
+        <el-form-item label="溯源批次">
+          <el-input :model-value="trace.productName + ' (' + trace.batchNo + ')'" disabled />
+        </el-form-item>
+        <el-form-item label="生成数量">
+          <el-input-number v-model="qrcodeCount" :min="1" :max="500" style="width:100%" />
+        </el-form-item>
+      </el-form>
+      <div v-if="qrcodes.length" style="margin-top:16px">
+        <el-alert :title="'已生成 ' + qrcodes.length + ' 个溯源码'" type="success" show-icon :closable="false" style="margin-bottom:12px" />
+        <el-button type="primary" @click="downloadPdf" :loading="downloading">下载 PDF（含二维码）</el-button>
+        <el-button @click="downloadCsv">下载 CSV</el-button>
+      </div>
+      <template #footer>
+        <el-button @click="showQrcode=false">关闭</el-button>
+        <el-button type="warning" @click="generateQrcodes" :loading="generating" v-if="!qrcodes.length">生成</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 发布预售商品对话框 -->
+    <el-dialog title="发布预售商品" v-model="showPresalePublish" width="550px">
+      <el-form :model="presaleForm" label-width="100px">
+        <el-form-item label="商品名称"><el-input :model-value="trace.productName" disabled /></el-form-item>
+        <el-form-item label="商品主图"><el-input v-model="presaleForm.mainImage" placeholder="图片URL" /></el-form-item>
+        <el-form-item label="预售价格"><el-input-number v-model="presaleForm.price" :min="0" :precision="2" style="width:100%" /></el-form-item>
+        <el-form-item label="原价"><el-input-number v-model="presaleForm.originalPrice" :min="0" :precision="2" style="width:100%" /></el-form-item>
+        <el-form-item label="预计种植日期"><el-date-picker v-model="presaleForm.presaleStart" type="date" value-format="YYYY-MM-DD" style="width:100%" /></el-form-item>
+        <el-form-item label="预计成熟日期"><el-date-picker v-model="presaleForm.presaleEnd" type="date" value-format="YYYY-MM-DD" style="width:100%" /></el-form-item>
+        <el-form-item label="预售库存"><el-input-number v-model="presaleForm.stock" :min="1" style="width:100%" /></el-form-item>
+        <el-form-item label="单位"><el-input v-model="presaleForm.unit" placeholder="箱/份" /></el-form-item>
+        <el-form-item label="商品描述"><el-input v-model="presaleForm.description" type="textarea" :rows="3" /></el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showPresalePublish=false">取消</el-button>
+        <el-button type="success" @click="publishPresale" :loading="presalePublishing">提交预售审核</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -119,9 +160,131 @@ const imgUploading = ref(false)
 const form = reactive({})
 const formRef = ref(null)
 
+// 溯源码
+const showQrcode = ref(false)
+const qrcodeCount = ref(10)
+const qrcodes = ref([])
+const generating = ref(false)
+const downloading = ref(false)
+
+async function generateQrcodes() {
+  generating.value = true
+  try {
+    // 获取管理员配置的服务器地址
+    let baseUrl = window.location.origin
+    try {
+      const cfg = await axios.get('/api/trace/qrcode/config')
+      baseUrl = cfg.data.data.baseUrl
+    } catch {}
+
+    const r = await axios.post('/api/trace/qrcode/batch-generate', {
+      traceId: Number(traceId),
+      count: qrcodeCount.value,
+      baseUrl: baseUrl
+    })
+    qrcodes.value = r.data.data.codes
+    ElMessage.success(`成功生成 ${qrcodes.value.length} 个溯源码`)
+  } catch (e) { ElMessage.error(e.response?.data?.msg || '生成失败') }
+  finally { generating.value = false }
+}
+
+function downloadCsv() {
+  const header = '溯源码,验证链接\n'
+  const rows = qrcodes.value.map(c => `${c.content},http://localhost:8088/qrcode-scan/${c.content}`).join('\n')
+  const blob = new Blob(['﻿' + header + rows], { type: 'text/csv;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a'); a.href = url; a.download = `溯源码_${trace.value.batchNo}.csv`; a.click()
+  URL.revokeObjectURL(url)
+}
+
+async function downloadPdf() {
+  downloading.value = true
+  try {
+    // Dynamically load QRCode and jsPDF libraries
+    await loadScript('https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js')
+    await loadScript('https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js')
+
+    const { jsPDF } = window.jspdf
+    const doc = new jsPDF('p', 'mm', 'a4')
+    const pageWidth = 210, pageHeight = 297
+    const cols = 3, rows = 8
+    const cellW = 60, cellH = 32, marginX = 15, marginY = 20
+
+    doc.setFontSize(16)
+    doc.text(`溯源码 - ${trace.value.productName} (${trace.value.batchNo})`, pageWidth / 2, 12, { align: 'center' })
+
+    for (let i = 0; i < qrcodes.value.length; i++) {
+      const pageIdx = Math.floor(i / (cols * rows))
+      const idx = i % (cols * rows)
+      const col = idx % cols
+      const row = Math.floor(idx / cols)
+
+      if (idx === 0 && i > 0) doc.addPage()
+
+      const x = marginX + col * cellW
+      const y = marginY + row * cellH
+
+      // Generate QR code as data URL - encode the full URL so scanning opens browser
+      const qrDataUrl = await new Promise(resolve => {
+        window.QRCode.toDataURL(qrcodes.value[i].url, { width: 200, margin: 1 }, (err, url) => resolve(url))
+      })
+
+      doc.addImage(qrDataUrl, 'PNG', x + 2, y, 22, 22)
+      doc.setFontSize(7)
+      doc.text(qrcodes.value[i].content.substring(0, 28), x + 25, y + 6)
+      doc.setFontSize(6)
+      doc.text(`扫码验证溯源`, x + 25, y + 12)
+      doc.setFontSize(5)
+      doc.text(`#${i + 1}`, x + 25, y + 18)
+    }
+
+    doc.save(`溯源码_${trace.value.batchNo}.pdf`)
+    ElMessage.success('PDF下载成功')
+  } catch (e) { ElMessage.error('PDF生成失败: ' + e.message) }
+  finally { downloading.value = false }
+}
+
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    if (document.querySelector(`script[src="${src}"]`)) { resolve(); return }
+    const s = document.createElement('script'); s.src = src; s.onload = resolve; s.onerror = reject
+    document.head.appendChild(s)
+  })
+}
+
 // 发布商品
 const showPublish = ref(false)
 const publishing = ref(false)
+
+// 发布预售
+const showPresalePublish = ref(false)
+const presalePublishing = ref(false)
+const presaleForm = reactive({
+  mainImage: '', price: 0, originalPrice: 0,
+  presaleStart: '', presaleEnd: '',
+  stock: 100, unit: '箱', description: ''
+})
+
+async function publishPresale() {
+  if (!presaleForm.price || !presaleForm.presaleStart || !presaleForm.presaleEnd) {
+    ElMessage.warning('请填写价格和预售时间'); return
+  }
+  presalePublishing.value = true
+  try {
+    await axios.post('/api/admin/product/publish', {
+      productName: trace.value.productName,
+      farmerId: trace.value.farmerId,
+      traceId: traceId,
+      categoryId: trace.value.categoryId || 12,
+      productNo: 'PP' + Date.now(),
+      isPresale: 1,
+      ...presaleForm
+    })
+    ElMessage.success('预售商品已提交审核')
+    showPresalePublish.value = false
+  } catch { ElMessage.error('提交失败') }
+  finally { presalePublishing.value = false }
+}
 const pubForm = reactive({ mainImage: '', price: 0, originalPrice: 0, stock: 100, unit: 'kg', description: '', weight: '', originPlace: '' })
 const pubFormRef = ref(null)
 
