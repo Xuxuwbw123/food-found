@@ -23,7 +23,11 @@ export const changeCategoryStatus = (id, status) => request.put(`/category/chang
 
 // 商品管理
 export const getProductList = (params) => request.get('/product/list', { params })
-export const getProductDetail = (id) => request.get(`/product/${id}`)
+// 后端 /product/{id} 返回 {product, images} 包装结构,前端要的是 product 对象,这里解包
+export const getProductDetail = async (id) => {
+  const res = await request.get(`/product/${id}`)
+  return { ...res, data: res.data?.product || res.data }
+}
 export const addProduct = (data) => request.post('/product/add', data)
 export const updateProduct = (data) => request.put('/product/update', data)
 export const deleteProduct = (id) => request.delete(`/product/delete/${id}`)

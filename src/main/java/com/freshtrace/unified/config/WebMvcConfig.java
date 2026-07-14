@@ -31,7 +31,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/api/product/related/**", "/api/farmer/list", "/api/farmer/detail/**",
                         "/api/trace/scan/**", "/api/trace/by-product/**", "/api/trace/list",
                         "/api/trace/detail/**", "/api/trace/qrcode/detail/**", "/api/geocode", "/api/presale/list", "/api/comment/product/**",
-                        "/api/notice/unread-count", "/api/footprint/add",
+                        "/api/footprint/add",
                         "/admin/statistics/**"
                 );
     }

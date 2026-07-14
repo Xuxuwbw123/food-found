@@ -42,6 +42,27 @@
           </template>
         </el-table-column>
         <el-table-column prop="content" label="评论内容" min-width="220" show-overflow-tooltip />
+        <el-table-column label="图片" width="120">
+          <template #default="{ row }">
+            <div v-if="row.images" style="display:flex;gap:4px;flex-wrap:wrap">
+              <el-image
+                v-for="(img, idx) in row.images.split(',').filter(x => x).slice(0, 3)"
+                :key="idx"
+                :src="img"
+                :preview-src-list="row.images.split(',').filter(x => x)"
+                :initial-index="idx"
+                fit="cover"
+                style="width:40px;height:40px;border-radius:4px"
+              >
+                <template #error><div style="width:40px;height:40px;background:#f5f5f5;display:flex;align-items:center;justify-content:center;color:#999;font-size:10px">?</div></template>
+              </el-image>
+              <span v-if="row.images.split(',').filter(x => x).length > 3" style="font-size:12px;color:#999;align-self:center">
+                +{{ row.images.split(',').filter(x => x).length - 3 }}
+              </span>
+            </div>
+            <span v-else style="color:#ccc">-</span>
+          </template>
+        </el-table-column>
         <el-table-column label="评分" width="120">
           <template #default="{ row }">
             <el-rate :model-value="row.rating" disabled show-score size="small" />

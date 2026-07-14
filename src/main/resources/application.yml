@@ -9,9 +9,13 @@ spring:
       write-dates-as-timestamps: false
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://127.0.0.1:3306/fresh_trace_shop?serverTimezone=Asia/Shanghai&useSSL=false&characterEncoding=utf-8&allowPublicKeyRetrieval=true
+    # 关键: 强制 utf8mb4 连接,防止 characterEncoding=utf-8
+    # 被 Connector/J 8.x 翻译为 SET NAMES utf8(3 字节上限),导致中文被替换为 ? 存入数据库
+    url: jdbc:mysql://127.0.0.1:3306/fresh_trace_shop?serverTimezone=Asia/Shanghai&useSSL=false&characterEncoding=utf-8&connectionCollation=utf8mb4_unicode_ci&allowPublicKeyRetrieval=true
+    hikari:
+      connection-init-sql: "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci"
     username: root
-    password: 123456
+    password: yaomingdada233
   servlet:
     multipart:
       max-file-size: 10MB

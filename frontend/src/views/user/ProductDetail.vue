@@ -79,6 +79,20 @@
               <span style="font-size:12px;color:#999">{{ c.createTime }}</span>
             </div>
             <div style="color:#333;line-height:1.6">{{ c.content }}</div>
+            <div v-if="c.images" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+              <el-image
+                v-for="(img, idx) in c.images.split(',').filter(x => x)"
+                :key="idx"
+                :src="img"
+                :preview-src-list="c.images.split(',').filter(x => x)"
+                :initial-index="idx"
+                fit="cover"
+                style="width:80px;height:80px;border-radius:6px;cursor:pointer"
+                lazy
+              >
+                <template #error><div style="width:80px;height:80px;background:#f5f5f5;display:flex;align-items:center;justify-content:center;color:#999;font-size:12px">加载失败</div></template>
+              </el-image>
+            </div>
           </div>
         </el-card>
       </div>
@@ -92,6 +106,21 @@
       <el-rate v-model="commentForm.rating" :max="5" show-text />
     </div>
     <el-input v-model="commentForm.content" type="textarea" :rows="4" placeholder="分享您的购买体验..." />
+    <div style="margin-top:12px">
+      <div style="font-size:13px;color:#999;margin-bottom:6px">图片（最多6张，每张不超过5MB）</div>
+      <el-upload
+        list-type="picture-card"
+        :file-list="commentForm.fileList"
+        :http-request="uploadCommentImage"
+        :on-remove="removeCommentImage"
+        :before-upload="beforeCommentUpload"
+        :limit="6"
+        multiple
+        accept="image/*"
+      >
+        <el-icon><Plus /></el-icon>
+      </el-upload>
+    </div>
     <template #footer>
       <el-button @click="showCommentDialog=false">取消</el-button>
       <el-button type="primary" @click="submitComment" :loading="commentLoading">提交评价</el-button>
@@ -254,20 +283,66 @@ async function loadData() {
 const comments = ref([])
 const showCommentDialog = ref(false)
 const commentLoading = ref(false)
-const commentForm = reactive({ rating: 5, content: '' })
+// 用 uploadedUrls 单独跟踪已上传成功的图片 URL,避开 el-upload 内部 file 对象
+// reactivity 陷阱(option.file.url 设了但 Vue 不一定检测到)
+const commentForm = reactive({ rating: 5, content: '', fileList: [], uploadedUrls: [] })
 
 async function loadComments() {
   try { const r = await axios.get(`/api/comment/product/${route.params.id}`); comments.value = r.data.data || [] } catch {}
 }
 
+function beforeCommentUpload(file) {
+  if (file.size > 5 * 1024 * 1024) { ElMessage.warning('单张图片不能超过 5MB'); return false }
+  return true
+}
+
+async function uploadCommentImage(option) {
+  const fd = new FormData()
+  fd.append('file', option.file)
+  try {
+    const r = await axios.post('/api/upload/product-image', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+    if (r.data?.code === 200 && r.data?.data?.imageUrl) {
+      // 关键: 同步设到 el-upload 的 file 对象(用于缩略图)+ uploadedUrls(用于提交)
+      option.file.url = r.data.data.imageUrl
+      commentForm.uploadedUrls.push(r.data.data.imageUrl)
+      ElMessage.success('上传成功')
+    } else {
+      ElMessage.error(r.data?.message || '上传失败')
+      const idx = commentForm.fileList.findIndex(f => f.uid === option.file.uid)
+      if (idx >= 0) commentForm.fileList.splice(idx, 1)
+    }
+  } catch (e) {
+    ElMessage.error(e.response?.data?.message || '上传失败')
+    const idx = commentForm.fileList.findIndex(f => f.uid === option.file.uid)
+    if (idx >= 0) commentForm.fileList.splice(idx, 1)
+  }
+}
+
+function removeCommentImage(file) {
+  const idx = commentForm.fileList.findIndex(f => f.uid === file.uid)
+  if (idx >= 0) commentForm.fileList.splice(idx, 1)
+  // 同步从 uploadedUrls 移除
+  if (file.url) {
+    const uidx = commentForm.uploadedUrls.indexOf(file.url)
+    if (uidx >= 0) commentForm.uploadedUrls.splice(uidx, 1)
+  }
+}
+
 async function submitComment() {
   if (!commentForm.content.trim()) { ElMessage.warning('请输入评价内容'); return }
+  // 用 uploadedUrls 数组,比 filter(file.url) 可靠
+  const imageUrls = [...commentForm.uploadedUrls]
   commentLoading.value = true
   try {
-    await axios.post('/api/comment/direct', { productId: parseInt(route.params.id), rating: commentForm.rating, content: commentForm.content })
+    await axios.post('/api/comment/direct', {
+      productId: parseInt(route.params.id),
+      rating: commentForm.rating,
+      content: commentForm.content,
+      images: imageUrls
+    })
     ElMessage.success('评论成功')
     showCommentDialog.value = false
-    commentForm.rating = 5; commentForm.content = ''
+    commentForm.rating = 5; commentForm.content = ''; commentForm.fileList = []; commentForm.uploadedUrls = []
     loadComments()
   } catch (e) { ElMessage.error(e.response?.data?.message || '评论失败') }
   finally { commentLoading.value = false }
