@@ -1,4 +1,4 @@
-package com.freshtrace.unified.controller;
+﻿package com.freshtrace.unified.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.freshtrace.unified.common.Result;
@@ -7,6 +7,7 @@ import com.freshtrace.unified.entity.*;
 import com.freshtrace.unified.service.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -19,7 +20,7 @@ public class GroupBuyController {
     @Autowired private ProductService productService;
     @Autowired private SysNoticeService noticeService;
 
-    // ============ 管理员：拼团管理 ============
+    // ============ 绠＄悊鍛橈細鎷煎洟绠＄悊 ============
     @GetMapping("/admin/group-buy/list")
     public Result<?> list() {
         return Result.success(groupBuyService.list(new LambdaQueryWrapper<GroupBuy>()
@@ -46,7 +47,7 @@ public class GroupBuyController {
         return Result.success();
     }
 
-    // ============ 用户端：拼团列表 ============
+    // ============ 鐢ㄦ埛绔細鎷煎洟鍒楄〃 ============
     @GetMapping("/api/group-buy/list")
     public Result<?> userList() {
         return Result.success(groupBuyService.list(new LambdaQueryWrapper<GroupBuy>()
@@ -55,16 +56,17 @@ public class GroupBuyController {
                 .ge(GroupBuy::getEndTime, LocalDateTime.now())));
     }
 
-    // ============ 用户端：参与拼团 ============
+    // ============ 鐢ㄦ埛绔細鍙備笌鎷煎洟 ============
     @PostMapping("/api/group-buy/join/{id}")
+    @Transactional
     public Result<?> join(@PathVariable Long id) {
         Long userId = UserContext.getUserId();
         GroupBuy gb = groupBuyService.getById(id);
-        if (gb == null || gb.getStatus() != 1) return Result.error(404, "拼团不存在");
+        if (gb == null || gb.getStatus() != 1) return Result.error(404, "鎷煎洟涓嶅瓨鍦?);
 
         long count = recordService.count(new LambdaQueryWrapper<GroupBuyRecord>()
                 .eq(GroupBuyRecord::getGroupBuyId, id).eq(GroupBuyRecord::getUserId, userId));
-        if (count > 0) return Result.error(400, "已参与");
+        if (count > 0) return Result.error(400, "宸插弬涓?);
 
         GroupBuyRecord record = new GroupBuyRecord();
         record.setGroupBuyId(id); record.setUserId(userId);
@@ -73,8 +75,8 @@ public class GroupBuyController {
 
         gb.setCurrentCount(gb.getCurrentCount() + 1);
         if (gb.getCurrentCount() >= gb.getGroupSize()) {
-            gb.setStatus(2); // 拼团成功
-            // 通知所有参与者
+            gb.setStatus(2); // 鎷煎洟鎴愬姛
+            // 閫氱煡鎵€鏈夊弬涓庤€?
             List<GroupBuyRecord> records = recordService.list(new LambdaQueryWrapper<GroupBuyRecord>()
                     .eq(GroupBuyRecord::getGroupBuyId, id));
             for (GroupBuyRecord r : records) {
@@ -82,18 +84,18 @@ public class GroupBuyController {
                 try {
                     SysNotice notice = new SysNotice();
                     notice.setUserId(r.getUserId()); notice.setNoticeType("group_buy");
-                    notice.setTitle("拼团成功");
-                    notice.setContent("您参与的拼团已成功，商品将尽快发出");
+                    notice.setTitle("鎷煎洟鎴愬姛");
+                    notice.setContent("鎮ㄥ弬涓庣殑鎷煎洟宸叉垚鍔燂紝鍟嗗搧灏嗗敖蹇彂鍑?);
                     notice.setIsRead(0); notice.setCreateTime(LocalDateTime.now());
                     noticeService.save(notice);
                 } catch (Exception ignored) {}
             }
         }
         groupBuyService.updateById(gb);
-        return Result.success("参与成功");
+        return Result.success("鍙備笌鎴愬姛");
     }
 
-    // ============ 用户端：我的拼团 ============
+    // ============ 鐢ㄦ埛绔細鎴戠殑鎷煎洟 ============
     @GetMapping("/api/group-buy/my")
     public Result<?> myGroupBuys() {
         Long userId = UserContext.getUserId();

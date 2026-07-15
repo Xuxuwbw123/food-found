@@ -1,4 +1,4 @@
-package com.freshtrace.unified.controller;
+﻿package com.freshtrace.unified.controller;
 
 import com.freshtrace.unified.common.Result;
 import com.freshtrace.unified.entity.TraceImage;
@@ -37,15 +37,15 @@ public class UploadController {
     }
 
     private String validateImageUpload(MultipartFile file) throws IOException {
-        if (file == null || file.isEmpty()) return "缺少文件";
-        if (file.getSize() > 5*1024*1024) return "文件超过5MB";
+        if (file == null || file.isEmpty()) return "缂哄皯鏂囦欢";
+        if (file.getSize() > 5*1024*1024) return "鏂囦欢瓒呰繃5MB";
         String ext = getExtension(file.getOriginalFilename()).toLowerCase();
-        if (!ALLOWED_EXT.contains(ext)) return "只支持图片格式：jpg/jpeg/png/gif/webp/bmp";
+        if (!ALLOWED_EXT.contains(ext)) return "鍙敮鎸佸浘鐗囨牸寮忥細jpg/jpeg/png/gif/webp/bmp";
         String ct = file.getContentType();
-        if (ct == null || !ALLOWED_MIME.contains(ct.toLowerCase())) return "MIME类型不合法";
+        if (ct == null || !ALLOWED_MIME.contains(ct.toLowerCase())) return "MIME绫诲瀷涓嶅悎娉?;
         byte[] header = new byte[8];
-        try (InputStream is = file.getInputStream()) { if (is.read(header) < 4) return "文件为空"; }
-        if (!isValidImageMagic(header)) return "文件内容非图片";
+        try (InputStream is = file.getInputStream()) { if (is.read(header) < 4) return "鏂囦欢涓虹┖"; }
+        if (!isValidImageMagic(header)) return "鏂囦欢鍐呭闈炲浘鐗?;
         return null;
     }
 
@@ -66,7 +66,7 @@ public class UploadController {
             img.setTraceId(traceId); img.setImageType(imageType); img.setImageUrl(imageUrl); img.setSort(0);
             traceImageService.save(img);
         }
-        return Result.success("上传成功", new HashMap<String,String>() {{ put("imageUrl", imageUrl); }});
+        return Result.success("涓婁紶鎴愬姛", new HashMap<String,String>() {{ put("imageUrl", imageUrl); }});
     }
 
     @PostMapping("/product-image")
@@ -78,12 +78,12 @@ public class UploadController {
         String dir = uploadPath + "/products/";
         new File(dir).mkdirs();
         file.transferTo(new File(dir + filename));
-        return Result.success("上传成功", new HashMap<String,String>() {{ put("imageUrl", "/uploads/products/" + filename); }});
+        return Result.success("涓婁紶鎴愬姛", new HashMap<String,String>() {{ put("imageUrl", "/uploads/products/" + filename); }});
     }
 
     private String getExtension(String fn) {
-        if (fn == null) return ".png";
+        if (fn == null || fn.trim().isEmpty() || fn.contains("..") || fn.contains("/") || fn.contains("\\\\")) return ".png";
         int dot = fn.lastIndexOf('.');
-        return dot >= 0 ? fn.substring(dot) : ".png";
-    }
-}
+        if (dot < 0) return ".png";
+        String ext = fn.substring(dot).toLowerCase();
+        if (!ALLOWED_EXT.contains(ext)) return ".png";

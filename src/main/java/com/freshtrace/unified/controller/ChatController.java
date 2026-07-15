@@ -1,4 +1,4 @@
-package com.freshtrace.unified.controller;
+﻿package com.freshtrace.unified.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
@@ -41,7 +41,7 @@ public class ChatController {
     @Autowired private OrderInfoMapper orderInfoMapper;
     @Autowired private SysConfigService configService;
 
-    private static final Long ADMIN_ID = 1000000000000001L;
+    private static final Long getAdminId() = 1000000000000001L;
     private static final int MAX_AI_ROUNDS = 10;
 
     private String getAiConfig(String key, String defaultValue) {
@@ -50,28 +50,28 @@ public class ChatController {
         return config != null && config.getConfigValue() != null ? config.getConfigValue() : defaultValue;
     }
 
-    // 跟踪每个用户的AI对话轮数
+    // 璺熻釜姣忎釜鐢ㄦ埛鐨凙I瀵硅瘽杞暟
     private static final Map<Long, Integer> aiRoundCount = new ConcurrentHashMap<>();
 
-    // AI系统提示词
-    private static final String AI_SYSTEM_PROMPT = "你是农臻溯源电商平台的智能客服助手。你只能回答以下简单问题：\n" +
-            "1. 发货时间：一般下单后1-3个工作日内发货\n" +
-            "2. 预计送达时间：发货后2-5天到达，具体看地区\n" +
-            "3. 物流查询：请到\"我的订单\"页面查看物流信息\n" +
-            "4. 商品信息：可到商品详情页查看\n" +
-            "5. 账户问题：会员、积分、优惠券的基本说明\n\n" +
-            "严格规则：\n" +
-            "- 只回答上述简单问题，回答不超过50字\n" +
-            "- 用户问与业务无关的问题（闲聊、政治、其他平台等），回复：\"抱歉，我只能处理与订单相关的问题。\"\n" +
-            "- 涉及以下任何内容，必须回复：\"这个问题需要人工客服为您处理，正在为您转接...\" 然后加上 [TRANSFER_TO_HUMAN]：\n" +
-            "  * 退款、退货、换货\n" +
-            "  * 订单异常、商品质量问题\n" +
-            "  * 投诉、差评\n" +
-            "  * 具体订单操作（取消、修改地址等）\n" +
-            "  * 用户表达不满或情绪\n" +
-            "- 不要闲聊，不要扩展话题，不要主动提问";
+    // AI绯荤粺鎻愮ず璇?
+    private static final String AI_SYSTEM_PROMPT = "浣犳槸鍐滆嚮婧簮鐢靛晢骞冲彴鐨勬櫤鑳藉鏈嶅姪鎵嬨€備綘鍙兘鍥炵瓟浠ヤ笅绠€鍗曢棶棰橈細\n" +
+            "1. 鍙戣揣鏃堕棿锛氫竴鑸笅鍗曞悗1-3涓伐浣滄棩鍐呭彂璐n" +
+            "2. 棰勮閫佽揪鏃堕棿锛氬彂璐у悗2-5澶╁埌杈撅紝鍏蜂綋鐪嬪湴鍖篭n" +
+            "3. 鐗╂祦鏌ヨ锛氳鍒癨"鎴戠殑璁㈠崟\"椤甸潰鏌ョ湅鐗╂祦淇℃伅\n" +
+            "4. 鍟嗗搧淇℃伅锛氬彲鍒板晢鍝佽鎯呴〉鏌ョ湅\n" +
+            "5. 璐︽埛闂锛氫細鍛樸€佺Н鍒嗐€佷紭鎯犲埜鐨勫熀鏈鏄嶾n\n" +
+            "涓ユ牸瑙勫垯锛歕n" +
+            "- 鍙洖绛斾笂杩扮畝鍗曢棶棰橈紝鍥炵瓟涓嶈秴杩?0瀛梊n" +
+            "- 鐢ㄦ埛闂笌涓氬姟鏃犲叧鐨勯棶棰橈紙闂茶亰銆佹斂娌汇€佸叾浠栧钩鍙扮瓑锛夛紝鍥炲锛歕"鎶辨瓑锛屾垜鍙兘澶勭悊涓庤鍗曠浉鍏崇殑闂銆俓"\n" +
+            "- 娑夊強浠ヤ笅浠讳綍鍐呭锛屽繀椤诲洖澶嶏細\"杩欎釜闂闇€瑕佷汉宸ュ鏈嶄负鎮ㄥ鐞嗭紝姝ｅ湪涓烘偍杞帴...\" 鐒跺悗鍔犱笂 [TRANSFER_TO_HUMAN]锛歕n" +
+            "  * 閫€娆俱€侀€€璐с€佹崲璐n" +
+            "  * 璁㈠崟寮傚父銆佸晢鍝佽川閲忛棶棰榎n" +
+            "  * 鎶曡瘔銆佸樊璇刓n" +
+            "  * 鍏蜂綋璁㈠崟鎿嶄綔锛堝彇娑堛€佷慨鏀瑰湴鍧€绛夛級\n" +
+            "  * 鐢ㄦ埛琛ㄨ揪涓嶆弧鎴栨儏缁猏n" +
+            "- 涓嶈闂茶亰锛屼笉瑕佹墿灞曡瘽棰橈紝涓嶈涓诲姩鎻愰棶";
 
-    // ============ 用户端：发送消息 ============
+    // ============ 鐢ㄦ埛绔細鍙戦€佹秷鎭?============
     @PostMapping("/api/chat/send")
     public Result<?> userSend(@RequestBody Map<String, Object> body) {
         Long userId = UserContext.getUserId();
@@ -80,11 +80,11 @@ public class ChatController {
         boolean useAI = Boolean.TRUE.equals(body.get("useAI"));
 
         if (content == null || content.trim().isEmpty()) {
-            return Result.error(400, "消息内容不能为空");
+            return Result.error(400, "娑堟伅鍐呭涓嶈兘涓虹┖");
         }
 
-        // 保存用户消息
-        Long toUserId = useAI ? 0L : (findChatAdmin(userId) != null ? findChatAdmin(userId) : ADMIN_ID);
+        // 淇濆瓨鐢ㄦ埛娑堟伅
+        Long toUserId = useAI ? 0L : (findChatAdmin(userId) != null ? findChatAdmin(userId) : getAdminId());
         ChatMessage userMsg = new ChatMessage();
         userMsg.setFromUserId(userId);
         userMsg.setToUserId(toUserId);
@@ -95,12 +95,12 @@ public class ChatController {
         chatService.save(userMsg);
 
         if (useAI) {
-            // AI回复
+            // AI鍥炲
             int rounds = aiRoundCount.getOrDefault(userId, 0);
             if (rounds >= MAX_AI_ROUNDS) {
-                // 超过轮数，转人工
+                // 瓒呰繃杞暟锛岃浆浜哄伐
                 aiRoundCount.remove(userId);
-                String transferMsg = "您已达到AI客服对话上限，正在为您转接人工客服...";
+                String transferMsg = "鎮ㄥ凡杈惧埌AI瀹㈡湇瀵硅瘽涓婇檺锛屾鍦ㄤ负鎮ㄨ浆鎺ヤ汉宸ュ鏈?..";
                 ChatMessage aiReply = saveAiReply(userId, transferMsg);
                 Map<String, Object> push = new HashMap<>();
                 push.put("type", "ai_reply");
@@ -108,12 +108,12 @@ public class ChatController {
                 push.put("transferToHuman", true);
                 ChatWebSocketHandler.sendToUser(userId, push);
 
-                // 通知管理员有新用户需要人工服务
+                // 閫氱煡绠＄悊鍛樻湁鏂扮敤鎴烽渶瑕佷汉宸ユ湇鍔?
                 notifyAdminNewUser(userId);
                 return Result.success(Map.of("message", buildMessageVO(userMsg, userId), "aiReply", buildMessageVO(aiReply, userId), "transferToHuman", true));
             }
 
-            // 调用AI API
+            // 璋冪敤AI API
             aiRoundCount.put(userId, rounds + 1);
             String aiResponse = callAI(content, userId);
             boolean transferToHuman = aiResponse.contains("[TRANSFER_TO_HUMAN]");
@@ -133,7 +133,7 @@ public class ChatController {
 
             return Result.success(Map.of("message", buildMessageVO(userMsg, userId), "aiReply", buildMessageVO(aiReply, userId), "transferToHuman", transferToHuman));
         } else {
-            // 发送给人工客服
+            // 鍙戦€佺粰浜哄伐瀹㈡湇
             Map<String, Object> push = new HashMap<>();
             push.put("type", "new_message");
             push.put("message", buildMessageVO(userMsg, userId));
@@ -142,29 +142,29 @@ public class ChatController {
         }
     }
 
-    // ============ 用户端：切换到人工客服 ============
+    // ============ 鐢ㄦ埛绔細鍒囨崲鍒颁汉宸ュ鏈?============
     @PostMapping("/api/chat/transfer")
     public Result<?> transferToHuman() {
         Long userId = UserContext.getUserId();
         aiRoundCount.remove(userId);
 
         Long adminId = findChatAdmin(userId);
-        if (adminId == null) adminId = ADMIN_ID;
+        if (adminId == null) adminId = getAdminId();
 
         ChatMessage msg = new ChatMessage();
         msg.setFromUserId(userId);
         msg.setToUserId(adminId);
-        msg.setContent("用户请求转接人工客服");
+        msg.setContent("鐢ㄦ埛璇锋眰杞帴浜哄伐瀹㈡湇");
         msg.setMsgType("system");
         msg.setIsRead(0);
         msg.setCreateTime(LocalDateTime.now());
         chatService.save(msg);
 
         notifyAdminNewUser(userId);
-        return Result.success("已转接人工客服");
+        return Result.success("宸茶浆鎺ヤ汉宸ュ鏈?);
     }
 
-    // ============ 管理员端：发送消息 ============
+    // ============ 绠＄悊鍛樼锛氬彂閫佹秷鎭?============
     @PostMapping("/admin/chat/send")
     public Result<?> adminSend(@RequestBody Map<String, Object> body) {
         Long adminId = UserContext.getUserId();
@@ -173,7 +173,7 @@ public class ChatController {
         String msgType = (String) body.getOrDefault("msgType", "text");
 
         if (content == null || content.trim().isEmpty()) {
-            return Result.error(400, "消息内容不能为空");
+            return Result.error(400, "娑堟伅鍐呭涓嶈兘涓虹┖");
         }
 
         ChatMessage msg = new ChatMessage();
@@ -193,16 +193,16 @@ public class ChatController {
         return Result.success(msg);
     }
 
-    // ============ 管理员端：处理退款（完整同步） ============
+    // ============ 绠＄悊鍛樼锛氬鐞嗛€€娆撅紙瀹屾暣鍚屾锛?============
     @PostMapping("/admin/chat/refund")
     @org.springframework.transaction.annotation.Transactional
     public Result<?> processRefund(@RequestBody Map<String, Object> body) {
         Long adminId = UserContext.getUserId();
         String orderIdStr = body.get("orderId").toString().trim();
         Long userId = Long.valueOf(body.get("userId").toString());
-        String reason = (String) body.getOrDefault("reason", "客服处理退款");
+        String reason = (String) body.getOrDefault("reason", "瀹㈡湇澶勭悊閫€娆?);
 
-        // 支持订单号（FD开头）或订单ID（纯数字）
+        // 鏀寔璁㈠崟鍙凤紙FD寮€澶达級鎴栬鍗旾D锛堢函鏁板瓧锛?
         OrderInfo order;
         if (orderIdStr.startsWith("FD") || orderIdStr.startsWith("fd")) {
             order = orderInfoService.getOne(new LambdaQueryWrapper<OrderInfo>()
@@ -210,12 +210,12 @@ public class ChatController {
         } else {
             order = orderInfoService.getById(Long.valueOf(orderIdStr));
         }
-        if (order == null) return Result.error(404, "订单不存在，请检查订单号");
-        if (order.getOrderStatus() == 4) return Result.error(400, "订单已取消");
+        if (order == null) return Result.error(404, "璁㈠崟涓嶅瓨鍦紝璇锋鏌ヨ鍗曞彿");
+        if (order.getOrderStatus() == 4) return Result.error(400, "璁㈠崟宸插彇娑?);
 
         BigDecimal refundAmount = order.getPayAmount() != null ? order.getPayAmount() : order.getTotalAmount();
 
-        // 1. 回滚库存
+        // 1. 鍥炴粴搴撳瓨
         List<OrderItem> items = orderItemService.list(new LambdaQueryWrapper<OrderItem>()
                 .eq(OrderItem::getOrderId, order.getId()));
         for (OrderItem item : items) {
@@ -227,21 +227,21 @@ public class ChatController {
             }
         }
 
-        // 2. 更新订单状态
+        // 2. 鏇存柊璁㈠崟鐘舵€?
         order.setOrderStatus(4);
         order.setCancelReason(reason);
         order.setCancelTime(LocalDateTime.now());
         orderInfoMapper.updateById(order);
 
-        // 3. 更新支付记录
+        // 3. 鏇存柊鏀粯璁板綍
         PaymentInfo pay = paymentInfoService.getOne(new LambdaQueryWrapper<PaymentInfo>()
                 .eq(PaymentInfo::getOrderId, order.getId()));
         if (pay != null && pay.getPayStatus() == 1) {
-            pay.setPayStatus(3); // 已退款
+            pay.setPayStatus(3); // 宸查€€娆?
             paymentInfoService.updateById(pay);
         }
 
-        // 4. 会员卡支付退款到余额
+        // 4. 浼氬憳鍗℃敮浠橀€€娆惧埌浣欓
         if (order.getPayType() != null && order.getPayType() == 3) {
             SysUser user = userMapper.selectById(userId);
             if (user != null) {
@@ -250,7 +250,7 @@ public class ChatController {
             }
         }
 
-        // 5. 扣除积分
+        // 5. 鎵ｉ櫎绉垎
         SysUser paidUser = userMapper.selectById(userId);
         int memberLevel = paidUser != null && paidUser.getMemberLevel() != null ? paidUser.getMemberLevel() : 0;
         int pointsRate = 1;
@@ -270,43 +270,43 @@ public class ChatController {
                 PointLog log = new PointLog();
                 log.setUserId(userId); log.setType("refund");
                 log.setPoint(-deductPoints); log.setBalance(mp.getAvailablePoint());
-                log.setRemark("客服退款扣除积分");
+                log.setRemark("瀹㈡湇閫€娆炬墸闄ょН鍒?);
                 log.setCreateTime(LocalDateTime.now());
                 pointLogService.save(log);
             }
         }
 
-        // 6. 创建售后工单
+        // 6. 鍒涘缓鍞悗宸ュ崟
         AfterSalesOrder afterSales = new AfterSalesOrder();
         afterSales.setAfterSalesNo("AS" + System.currentTimeMillis());
         afterSales.setOrderId(order.getId());
         afterSales.setOrderNo(order.getOrderNo());
         afterSales.setUserId(userId);
         afterSales.setFarmerId(order.getFarmerId());
-        afterSales.setAfterSalesType(1); // 1=退款
+        afterSales.setAfterSalesType(1); // 1=閫€娆?
         afterSales.setReason(reason);
         afterSales.setRefundAmount(refundAmount);
-        afterSales.setStatus(1); // 已审核
+        afterSales.setStatus(1); // 宸插鏍?
         afterSales.setAdminId(adminId);
-        afterSales.setAdminRemark("客服退款处理");
+        afterSales.setAdminRemark("瀹㈡湇閫€娆惧鐞?);
         afterSales.setApplyTime(LocalDateTime.now());
         afterSales.setAuditTime(LocalDateTime.now());
         afterSales.setCreateTime(LocalDateTime.now());
         afterSalesService.save(afterSales);
 
-        // 7. 记录订单日志
+        // 7. 璁板綍璁㈠崟鏃ュ織
         OrderLog orderLog = new OrderLog();
         orderLog.setOrderId(order.getId()); orderLog.setOrderNo(order.getOrderNo());
         orderLog.setOrderStatus(4); orderLog.setOperatorType(3); orderLog.setOperatorId(adminId);
-        orderLog.setRemark("客服退款：" + reason);
+        orderLog.setRemark("瀹㈡湇閫€娆撅細" + reason);
         orderLog.setCreateTime(LocalDateTime.now());
         orderLogService.save(orderLog);
 
-        // 8. 发送消息通知用户
-        String refundMsg = String.format("【退款成功】\n订单号：%s\n退款金额：¥%s\n退款方式：%s\n%s",
+        // 8. 鍙戦€佹秷鎭€氱煡鐢ㄦ埛
+        String refundMsg = String.format("銆愰€€娆炬垚鍔熴€慭n璁㈠崟鍙凤細%s\n閫€娆鹃噾棰濓細楼%s\n閫€娆炬柟寮忥細%s\n%s",
                 order.getOrderNo(), refundAmount,
-                order.getPayType() == 3 ? "退回会员卡余额" : "原路退回",
-                order.getPayType() == 3 ? "退款已退回您的会员卡余额，请查收。" : "退款将在1-3个工作日内原路退回。");
+                order.getPayType() == 3 ? "閫€鍥炰細鍛樺崱浣欓" : "鍘熻矾閫€鍥?,
+                order.getPayType() == 3 ? "閫€娆惧凡閫€鍥炴偍鐨勪細鍛樺崱浣欓锛岃鏌ユ敹銆? : "閫€娆惧皢鍦?-3涓伐浣滄棩鍐呭師璺€€鍥炪€?);
         ChatMessage msg = new ChatMessage();
         msg.setFromUserId(adminId); msg.setToUserId(userId);
         msg.setContent(refundMsg); msg.setMsgType("refund");
@@ -318,36 +318,36 @@ public class ChatController {
         push.put("message", buildMessageVO(msg, adminId));
         ChatWebSocketHandler.sendToUser(userId, push);
 
-        return Result.success("退款成功", Map.of("refundAmount", refundAmount));
+        return Result.success("閫€娆炬垚鍔?, Map.of("refundAmount", refundAmount));
     }
 
-    // ============ 用户端：获取聊天记录 ============
+    // ============ 鐢ㄦ埛绔細鑾峰彇鑱婂ぉ璁板綍 ============
     @GetMapping("/api/chat/messages")
     public Result<?> userMessages() {
         Long userId = UserContext.getUserId();
         Long adminId = findChatAdmin(userId);
-        final Long targetAdminId = adminId != null ? adminId : ADMIN_ID;
+        final Long targetAdminId = adminId != null ? adminId : getAdminId();
 
-        // 标记已读
+        // 鏍囪宸茶
         chatService.update(new LambdaUpdateWrapper<ChatMessage>()
                 .set(ChatMessage::getIsRead, 1)
                 .eq(ChatMessage::getFromUserId, targetAdminId)
                 .eq(ChatMessage::getToUserId, userId)
                 .eq(ChatMessage::getIsRead, 0));
 
-        // 我发给管理员的
+        // 鎴戝彂缁欑鐞嗗憳鐨?
         List<ChatMessage> list1 = chatService.list(new LambdaQueryWrapper<ChatMessage>()
                 .eq(ChatMessage::getFromUserId, userId)
                 .eq(ChatMessage::getToUserId, targetAdminId)
                 .orderByAsc(ChatMessage::getCreateTime));
 
-        // AI发给我的
+        // AI鍙戠粰鎴戠殑
         List<ChatMessage> list2 = chatService.list(new LambdaQueryWrapper<ChatMessage>()
                 .eq(ChatMessage::getFromUserId, 0L)
                 .eq(ChatMessage::getToUserId, userId)
                 .orderByAsc(ChatMessage::getCreateTime));
 
-        // 管理员发给我的
+        // 绠＄悊鍛樺彂缁欐垜鐨?
         List<ChatMessage> list3 = chatService.list(new LambdaQueryWrapper<ChatMessage>()
                 .eq(ChatMessage::getFromUserId, targetAdminId)
                 .eq(ChatMessage::getToUserId, userId)
@@ -366,7 +366,7 @@ public class ChatController {
         return Result.success(result);
     }
 
-    // ============ 管理员端：获取会话列表 ============
+    // ============ 绠＄悊鍛樼锛氳幏鍙栦細璇濆垪琛?============
     @GetMapping("/admin/chat/conversations")
     public Result<?> adminConversations() {
         Long adminId = UserContext.getUserId();
@@ -377,7 +377,7 @@ public class ChatController {
         Map<Long, ChatMessage> convMap = new LinkedHashMap<>();
         for (ChatMessage m : allMessages) {
             Long otherUserId = m.getFromUserId().equals(adminId) ? m.getToUserId() : m.getFromUserId();
-            if (otherUserId == 0L) continue; // AI消息
+            if (otherUserId == 0L) continue; // AI娑堟伅
             convMap.putIfAbsent(otherUserId, m);
         }
 
@@ -394,7 +394,7 @@ public class ChatController {
 
             Map<String, Object> conv = new HashMap<>();
             conv.put("userId", userIdx);
-            conv.put("nickname", user != null ? (user.getNickname() != null ? user.getNickname() : user.getUsername()) : "用户" + userIdx);
+            conv.put("nickname", user != null ? (user.getNickname() != null ? user.getNickname() : user.getUsername()) : "鐢ㄦ埛" + userIdx);
             conv.put("lastMessage", lastMsg.getContent());
             conv.put("lastTime", lastMsg.getCreateTime());
             conv.put("unreadCount", unreadCount);
@@ -404,19 +404,19 @@ public class ChatController {
         return Result.success(result);
     }
 
-    // ============ 管理员端：获取与指定用户的聊天记录 ============
+    // ============ 绠＄悊鍛樼锛氳幏鍙栦笌鎸囧畾鐢ㄦ埛鐨勮亰澶╄褰?============
     @GetMapping("/admin/chat/messages/{userId}")
     public Result<?> adminMessages(@PathVariable Long userId) {
         Long adminId = UserContext.getUserId();
 
-        // 标记已读
+        // 鏍囪宸茶
         chatService.update(new LambdaUpdateWrapper<ChatMessage>()
                 .set(ChatMessage::getIsRead, 1)
                 .eq(ChatMessage::getFromUserId, userId)
                 .eq(ChatMessage::getToUserId, adminId)
                 .eq(ChatMessage::getIsRead, 0));
 
-        // 查询：用户发给我的 + 用户发给AI的 + AI发给用户的 + 我发给用户的
+        // 鏌ヨ锛氱敤鎴峰彂缁欐垜鐨?+ 鐢ㄦ埛鍙戠粰AI鐨?+ AI鍙戠粰鐢ㄦ埛鐨?+ 鎴戝彂缁欑敤鎴风殑
         List<ChatMessage> list1 = chatService.list(new LambdaQueryWrapper<ChatMessage>()
                 .eq(ChatMessage::getFromUserId, userId)
                 .eq(ChatMessage::getToUserId, adminId)
@@ -451,7 +451,7 @@ public class ChatController {
         return Result.success(result);
     }
 
-    // ============ 用户端：获取我的订单列表（供客服使用） ============
+    // ============ 鐢ㄦ埛绔細鑾峰彇鎴戠殑璁㈠崟鍒楄〃锛堜緵瀹㈡湇浣跨敤锛?============
     @GetMapping("/api/chat/orders")
     public Result<?> chatOrders() {
         Long userId = UserContext.getUserId();
@@ -476,7 +476,7 @@ public class ChatController {
         return Result.success(result);
     }
 
-    // ============ 管理员端：测试AI连接 ============
+    // ============ 绠＄悊鍛樼锛氭祴璇旳I杩炴帴 ============
     @PostMapping("/admin/chat/test-ai")
     public Result<?> testAi(@RequestBody Map<String, String> body) {
         try {
@@ -513,7 +513,7 @@ public class ChatController {
             int responseCode = conn.getResponseCode();
             if (responseCode != 200) {
                 String errBody = new String(conn.getErrorStream().readAllBytes(), StandardCharsets.UTF_8);
-                return Result.error(responseCode, "API返回错误: " + errBody.substring(0, Math.min(200, errBody.length())));
+                return Result.error(responseCode, "API杩斿洖閿欒: " + errBody.substring(0, Math.min(200, errBody.length())));
             }
 
             String responseBody = new String(conn.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
@@ -521,16 +521,16 @@ public class ChatController {
             String reply = root.path("choices").get(0).path("message").path("content").asText();
             return Result.success(Map.of("reply", reply.substring(0, Math.min(100, reply.length()))));
         } catch (Exception e) {
-            return Result.error(500, "连接失败: " + e.getMessage());
+            return Result.error(500, "杩炴帴澶辫触: " + e.getMessage());
         }
     }
 
-    // ============ 未读消息数 ============
+    // ============ 鏈娑堟伅鏁?============
     @GetMapping("/api/chat/unread")
     public Result<?> userUnread() {
         Long userId = UserContext.getUserId();
         Long adminId = findChatAdmin(userId);
-        if (adminId == null) adminId = ADMIN_ID;
+        if (adminId == null) adminId = getAdminId();
         long count = chatService.count(new LambdaQueryWrapper<ChatMessage>()
                 .eq(ChatMessage::getFromUserId, adminId)
                 .eq(ChatMessage::getToUserId, userId)
@@ -547,7 +547,7 @@ public class ChatController {
         return Result.success(Map.of("count", count));
     }
 
-    // ============ 内部方法 ============
+    // ============ 鍐呴儴鏂规硶 ============
 
     private String callAI(String userMessage, Long userId) {
         try {
@@ -556,10 +556,10 @@ public class ChatController {
             String model = getAiConfig("ai_model", "mimo-v2.5-pro");
 
             if (apiKey == null || apiKey.isEmpty()) {
-                return "AI服务未配置，请联系管理员设置API Key。[TRANSFER_TO_HUMAN]";
+                return "AI鏈嶅姟鏈厤缃紝璇疯仈绯荤鐞嗗憳璁剧疆API Key銆俒TRANSFER_TO_HUMAN]";
             }
 
-            // 获取用户最近的聊天记录作为上下文
+            // 鑾峰彇鐢ㄦ埛鏈€杩戠殑鑱婂ぉ璁板綍浣滀负涓婁笅鏂?
             List<ChatMessage> recentMsgs = chatService.list(new LambdaQueryWrapper<ChatMessage>()
                     .and(w -> w
                             .and(x -> x.eq(ChatMessage::getFromUserId, userId).eq(ChatMessage::getToUserId, 0L))
@@ -568,7 +568,7 @@ public class ChatController {
                     .orderByDesc(ChatMessage::getCreateTime)
                     .last("LIMIT 10"));
 
-            // 构建消息列表
+            // 鏋勫缓娑堟伅鍒楄〃
             List<Map<String, String>> messages = new ArrayList<>();
             Map<String, String> systemMsg = new HashMap<>();
             systemMsg.put("role", "system");
@@ -612,7 +612,7 @@ public class ChatController {
 
             int responseCode = conn.getResponseCode();
             if (responseCode != 200) {
-                return "AI服务暂时不可用，正在为您转接人工客服...[TRANSFER_TO_HUMAN]";
+                return "AI鏈嶅姟鏆傛椂涓嶅彲鐢紝姝ｅ湪涓烘偍杞帴浜哄伐瀹㈡湇...[TRANSFER_TO_HUMAN]";
             }
 
             String responseBody = new String(conn.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
@@ -621,7 +621,7 @@ public class ChatController {
             return aiContent;
 
         } catch (Exception e) {
-            return "AI服务暂时不可用，正在为您转接人工客服...[TRANSFER_TO_HUMAN]";
+            return "AI鏈嶅姟鏆傛椂涓嶅彲鐢紝姝ｅ湪涓烘偍杞帴浜哄伐瀹㈡湇...[TRANSFER_TO_HUMAN]";
         }
     }
 
@@ -639,14 +639,14 @@ public class ChatController {
 
     private void notifyAdminNewUser(Long userId) {
         SysUser user = userMapper.selectById(userId);
-        String nickname = user != null ? (user.getNickname() != null ? user.getNickname() : user.getUsername()) : "用户" + userId;
+        String nickname = user != null ? (user.getNickname() != null ? user.getNickname() : user.getUsername()) : "鐢ㄦ埛" + userId;
 
         Map<String, Object> push = new HashMap<>();
         push.put("type", "user_transfer");
         push.put("userId", userId);
         push.put("nickname", nickname);
-        push.put("message", nickname + " 请求人工客服");
-        ChatWebSocketHandler.sendToUser(ADMIN_ID, push);
+        push.put("message", nickname + " 璇锋眰浜哄伐瀹㈡湇");
+        ChatWebSocketHandler.sendToUser(getAdminId(), push);
     }
 
     private Long findChatAdmin(Long userId) {
@@ -675,14 +675,14 @@ public class ChatController {
     }
 
     private String getStatusText(Integer status) {
-        if (status == null) return "未知";
+        if (status == null) return "鏈煡";
         switch (status) {
-            case 0: return "待付款";
-            case 1: return "待发货";
-            case 2: return "已发货";
-            case 3: return "已完成";
-            case 4: return "已取消";
-            default: return "未知";
+            case 0: return "寰呬粯娆?;
+            case 1: return "寰呭彂璐?;
+            case 2: return "宸插彂璐?;
+            case 3: return "宸插畬鎴?;
+            case 4: return "宸插彇娑?;
+            default: return "鏈煡";
         }
     }
 }

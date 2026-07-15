@@ -1,4 +1,4 @@
-package com.freshtrace.unified.controller;
+﻿package com.freshtrace.unified.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.freshtrace.unified.common.Result;
@@ -19,7 +19,7 @@ public class GreenPointsController {
     @Autowired private PointLogService pointLogService;
     @Autowired private CharityCertService certService;
 
-    // ============ 管理员：绿色积分规则 ============
+    // ============ 绠＄悊鍛橈細缁胯壊绉垎瑙勫垯 ============
     @GetMapping("/admin/green-points/rules")
     public Result<?> ruleList() {
         return Result.success(ruleService.list());
@@ -44,14 +44,14 @@ public class GreenPointsController {
         return Result.success();
     }
 
-    // ============ 用户端：获取绿色积分规则 ============
+    // ============ 鐢ㄦ埛绔細鑾峰彇缁胯壊绉垎瑙勫垯 ============
     @GetMapping("/api/green-points/rules")
     public Result<?> userRules() {
         return Result.success(ruleService.list(new LambdaQueryWrapper<GreenPointsRule>()
                 .eq(GreenPointsRule::getStatus, 1)));
     }
 
-    // ============ 用户端：获取助农证书 ============
+    // ============ 鐢ㄦ埛绔細鑾峰彇鍔╁啘璇佷功 ============
     @GetMapping("/api/green-points/certs")
     public Result<?> myCerts() {
         Long userId = UserContext.getUserId();
@@ -59,7 +59,8 @@ public class GreenPointsController {
                 .eq(CharityCert::getUserId, userId).orderByDesc(CharityCert::getCreateTime)));
     }
 
-    // ============ 内部方法：发放绿色积分 ============
+    // ============ 鍐呴儴鏂规硶锛氬彂鏀剧豢鑹茬Н鍒?============
+    @Transactional
     public void awardGreenPoints(Long userId, String actionType) {
         GreenPointsRule rule = ruleService.getOne(new LambdaQueryWrapper<GreenPointsRule>()
                 .eq(GreenPointsRule::getActionType, actionType).eq(GreenPointsRule::getStatus, 1));

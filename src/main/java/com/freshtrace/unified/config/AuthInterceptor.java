@@ -1,4 +1,4 @@
-package com.freshtrace.unified.config;
+﻿package com.freshtrace.unified.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.freshtrace.unified.common.Result;
@@ -39,18 +39,18 @@ public class AuthInterceptor implements HandlerInterceptor {
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
-        // 禁止浏览器缓存API响应
+        // 绂佹娴忚鍣ㄧ紦瀛楢PI鍝嶅簲
         response.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
         response.setHeader("Pragma", "no-cache");
         response.setHeader("Expires", "0");
 
         String url = request.getRequestURI();
 
-        // 页面请求（非API）跳过鉴权
+        // 椤甸潰璇锋眰锛堥潪API锛夎烦杩囬壌鏉?
         String accept = request.getHeader("Accept");
         if (accept != null && accept.contains("text/html")) return true;
 
-        // 公开接口
+        // 鍏紑鎺ュ彛
         for (String p : PUBLIC_PATHS) {
             if (url.equals(p)) return true;
         }
@@ -58,23 +58,23 @@ public class AuthInterceptor implements HandlerInterceptor {
             if (url.startsWith(p)) return true;
         }
 
-        // 静态资源和SPA路由
+        // 闈欐€佽祫婧愬拰SPA璺敱
         if (!url.startsWith("/api/") && !url.startsWith("/admin/")) return true;
 
-        // 提取token
+        // 鎻愬彇token
         String authHeader = request.getHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            writeError(response, 401, "未登录，请先登录");
+            writeError(response, 401, "鏈櫥褰曪紝璇峰厛鐧诲綍");
             return false;
         }
 
         String token = authHeader.substring(7);
         if (!jwtUtils.validateToken(token)) {
-            writeError(response, 401, "登录已过期，请重新登录");
+            writeError(response, 401, "鐧诲綍宸茶繃鏈燂紝璇烽噸鏂扮櫥褰?);
             return false;
         }
 
-        // 将用户信息存入request和UserContext
+        // 灏嗙敤鎴蜂俊鎭瓨鍏equest鍜孶serContext
         Long userId = jwtUtils.getUserId(token);
         Integer userType = jwtUtils.getUserType(token);
         request.setAttribute("userId", userId);

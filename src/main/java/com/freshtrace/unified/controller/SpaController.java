@@ -16,7 +16,7 @@ public class SpaController {
             "/cart", "/orders", "/pay", "/profile", "/address",
             "/favorites", "/search", "/trace", "/notices",
             "/points", "/footprints", "/coupons", "/after-sales",
-            "/qrcode-verify", "/qrcode-scan",
+            "/qrcode-verify",
             "/presale", "/presale-confirm", "/my-presale",
             "/chat"
     })
@@ -94,8 +94,6 @@ public class SpaController {
         return "forward:/index.html";
     }
 
-    @RequestMapping("/qrcode-scan/{code}")
-    public String forwardQrcodeScan() {
         return "forward:/index.html";
     }
 

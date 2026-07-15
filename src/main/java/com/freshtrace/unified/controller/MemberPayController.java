@@ -1,4 +1,4 @@
-package com.freshtrace.unified.controller;
+﻿package com.freshtrace.unified.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
@@ -29,7 +29,7 @@ public class MemberPayController {
     @Autowired private MemberPointService memberPointService;
     @Autowired private PointLogService pointLogService;
 
-    // ============ 会员卡余额支付 ============
+    // ============ 浼氬憳鍗′綑棰濇敮浠?============
     @PostMapping("/api/order/pay-by-balance")
     @Transactional
     public Result<?> payByBalance(@RequestBody Map<String, Object> body) {
@@ -38,40 +38,40 @@ public class MemberPayController {
 
         OrderInfo order = orderInfoService.getById(orderId);
         if (order == null || !order.getUserId().equals(userId)) {
-            return Result.error(404, "订单不存在");
+            return Result.error(404, "璁㈠崟涓嶅瓨鍦?);
         }
         if (order.getOrderStatus() != 0) {
-            return Result.error(400, "订单状态不允许支付");
+            return Result.error(400, "璁㈠崟鐘舵€佷笉鍏佽鏀粯");
         }
 
         SysUser user = userMapper.selectById(userId);
-        if (user == null) return Result.error(404, "用户不存在");
+        if (user == null) return Result.error(404, "鐢ㄦ埛涓嶅瓨鍦?);
 
-        // 会员折扣和优惠券已在下单时扣除，直接用payAmount
+        // 浼氬憳鎶樻墸鍜屼紭鎯犲埜宸插湪涓嬪崟鏃舵墸闄わ紝鐩存帴鐢╬ayAmount
         BigDecimal payAmount = order.getPayAmount() != null ? order.getPayAmount() : order.getTotalAmount();
 
-        // 检查余额
+        // 妫€鏌ヤ綑棰?
         BigDecimal balance = user.getBalance() != null ? user.getBalance() : BigDecimal.ZERO;
         if (balance.compareTo(payAmount) < 0) {
-            return Result.error(400, "余额不足，当前余额 ¥" + balance + "，需支付 ¥" + payAmount);
+            return Result.error(400, "浣欓涓嶈冻锛屽綋鍓嶄綑棰?楼" + balance + "锛岄渶鏀粯 楼" + payAmount);
         }
 
-        // 扣除余额
+        // 鎵ｉ櫎浣欓
         user.setBalance(balance.subtract(payAmount));
         userMapper.updateById(user);
 
-        // 更新订单状态（使用mapper直接更新）
+        // 鏇存柊璁㈠崟鐘舵€侊紙浣跨敤mapper鐩存帴鏇存柊锛?
         OrderInfo updateOrder = new OrderInfo();
         updateOrder.setId(orderId);
         updateOrder.setOrderStatus(1);
-        updateOrder.setPayType(3); // 3=会员卡
+        updateOrder.setPayType(3); // 3=浼氬憳鍗?
         updateOrder.setPayTime(LocalDateTime.now());
         int rows = orderInfoMapper.updateById(updateOrder);
         if (rows == 0) {
-            throw new RuntimeException("支付失败，订单状态已变更");
+            throw new RuntimeException("鏀粯澶辫触锛岃鍗曠姸鎬佸凡鍙樻洿");
         }
 
-        // 更新支付记录
+        // 鏇存柊鏀粯璁板綍
         PaymentInfo pay = paymentInfoService.getOne(new LambdaQueryWrapper<PaymentInfo>()
                 .eq(PaymentInfo::getOrderId, orderId));
         if (pay != null) {
@@ -81,49 +81,49 @@ public class MemberPayController {
             paymentInfoService.updateById(pay);
         }
 
-        // 记录订单日志
+        // 璁板綍璁㈠崟鏃ュ織
         OrderLog log = new OrderLog();
         log.setOrderId(orderId);
         log.setOrderNo(order.getOrderNo());
         log.setOrderStatus(1);
         log.setOperatorType(1);
         log.setOperatorId(userId);
-        log.setRemark("会员卡余额支付 ¥" + payAmount);
+        log.setRemark("浼氬憳鍗′綑棰濇敮浠?楼" + payAmount);
         log.setCreateTime(LocalDateTime.now());
         orderLogService.save(log);
 
-        // 累计消费 + 自动升级
+        // 绱娑堣垂 + 鑷姩鍗囩骇
         BigDecimal totalSpent = user.getTotalSpent() != null ? user.getTotalSpent() : BigDecimal.ZERO;
         BigDecimal newTotalSpent = totalSpent.add(payAmount);
         user.setTotalSpent(newTotalSpent);
         userMapper.updateById(user);
         checkAndUpgradeMember(userId, newTotalSpent);
 
-        // 发放积分
+        // 鍙戞斁绉垎
         awardPoints(userId, payAmount, user.getMemberLevel() != null ? user.getMemberLevel() : 0);
 
         Map<String, Object> result = new HashMap<>();
         result.put("orderId", orderId);
         result.put("payAmount", payAmount);
         result.put("balance", user.getBalance());
-        return Result.success("支付成功", result);
+        return Result.success("鏀粯鎴愬姛", result);
     }
 
-    // ============ 获取支付选项（含会员折扣信息） ============
+    // ============ 鑾峰彇鏀粯閫夐」锛堝惈浼氬憳鎶樻墸淇℃伅锛?============
     @GetMapping("/api/order/pay-options/{orderId}")
     public Result<?> getPayOptions(@PathVariable Long orderId) {
         Long userId = UserContext.getUserId();
         OrderInfo order = orderInfoService.getById(orderId);
         if (order == null || !order.getUserId().equals(userId)) {
-            return Result.error(404, "订单不存在");
+            return Result.error(404, "璁㈠崟涓嶅瓨鍦?);
         }
 
         SysUser user = userMapper.selectById(userId);
-        if (user == null) return Result.error(404, "用户不存在");
+        if (user == null) return Result.error(404, "鐢ㄦ埛涓嶅瓨鍦?);
 
         BigDecimal balance = user.getBalance() != null ? user.getBalance() : BigDecimal.ZERO;
         int memberLevel = user.getMemberLevel() != null ? user.getMemberLevel() : 0;
-        String levelName = "普通用户";
+        String levelName = "鏅€氱敤鎴?;
         BigDecimal discountRate = BigDecimal.ONE;
 
         if (memberLevel > 0) {
@@ -135,7 +135,7 @@ public class MemberPayController {
             }
         }
 
-        // 会员折扣和优惠券已在下单时扣除，直接用payAmount
+        // 浼氬憳鎶樻墸鍜屼紭鎯犲埜宸插湪涓嬪崟鏃舵墸闄わ紝鐩存帴鐢╬ayAmount
         BigDecimal originalAmount = order.getTotalAmount();
         BigDecimal payAmount = order.getPayAmount() != null ? order.getPayAmount() : order.getTotalAmount();
         BigDecimal totalDiscount = order.getDiscountAmount() != null ? order.getDiscountAmount() : BigDecimal.ZERO;
@@ -163,7 +163,8 @@ public class MemberPayController {
         return config != null && config.getDiscountRate() != null ? config.getDiscountRate() : BigDecimal.ONE;
     }
 
-    private void checkAndUpgradeMember(Long userId, BigDecimal totalSpent) {
+    @Transactional
+    public void checkAndUpgradeMember(Long userId, BigDecimal totalSpent) {
         List<MemberLevelConfig> levels = levelConfigService.list(new LambdaQueryWrapper<MemberLevelConfig>()
                 .orderByDesc(MemberLevelConfig::getUpgradeAmount));
         int newLevel = 0;
@@ -182,7 +183,8 @@ public class MemberPayController {
         }
     }
 
-    private void awardPoints(Long userId, BigDecimal amount, int memberLevel) {
+    @Transactional
+    public void awardPoints(Long userId, BigDecimal amount, int memberLevel) {
         int pointsRate = 1;
         if (memberLevel > 0) {
             MemberLevelConfig config = levelConfigService.getOne(new LambdaQueryWrapper<MemberLevelConfig>()
@@ -205,7 +207,7 @@ public class MemberPayController {
         PointLog log = new PointLog();
         log.setUserId(userId); log.setType("purchase");
         log.setPoint(points); log.setBalance(mp.getAvailablePoint());
-        log.setRemark("消费获得积分（" + pointsRate + "倍）");
+        log.setRemark("娑堣垂鑾峰緱绉垎锛? + pointsRate + "鍊嶏級");
         log.setCreateTime(LocalDateTime.now());
         pointLogService.save(log);
     }

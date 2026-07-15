@@ -1,4 +1,4 @@
-package com.freshtrace.unified.common;
+﻿package com.freshtrace.unified.common;
 
 import lombok.Data;
 
@@ -11,7 +11,7 @@ public class Result<T> {
     public static <T> Result<T> success() { return success(null); }
     public static <T> Result<T> success(T data) {
         Result<T> r = new Result<>();
-        r.setCode(200); r.setMessage("操作成功"); r.setData(data); return r;
+        r.setCode(200); r.setMessage("鎿嶄綔鎴愬姛"); r.setData(data); return r;
     }
     public static <T> Result<T> success(String msg, T data) {
         Result<T> r = new Result<>();
@@ -27,6 +27,7 @@ public class Result<T> {
     }
 
     // Aliases for food-found compatibility
+    // @Deprecated 保留向前兼容，新代码请使用 success() / error()
     public static <T> Result<T> ok(T data) { return success(data); }
     public static <T> Result<T> ok() { return success(); }
     public static <T> Result<T> fail(String msg) { return error(msg); }

@@ -1,4 +1,4 @@
-package com.freshtrace.unified.service.impl;
+﻿package com.freshtrace.unified.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -43,7 +43,7 @@ public class OrderServiceImpl implements OrderService {
     @Transactional
     public Map<String, Object> create(CreateOrderDTO dto) {
         Long userId = UserContext.getUserId();
-        // Bug #34 fix: 订单号加4位随机数防撞车
+        // Bug #34 fix: 璁㈠崟鍙峰姞4浣嶉殢鏈烘暟闃叉挒杞?
         String orderNo = "FD" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS"))
                 + String.format("%04d", java.util.concurrent.ThreadLocalRandom.current().nextInt(10000));
         BigDecimal totalAmount = BigDecimal.ZERO;
@@ -94,15 +94,25 @@ public class OrderServiceImpl implements OrderService {
             Product p = productMapper.selectById(item.getProductId());
             if (p == null) throw new RuntimeException("product not found: " + item.getProductId());
             if (p.getStock() < item.getQuantity()) throw new RuntimeException("out of stock: " + p.getProductName());
+            // Bug #7 fix: validate product status before order
+            if (p.getDeleted() != null && p.getDeleted() == 1)
+                throw new RuntimeException("product has been deleted: " + p.getProductName());
+            if (p.getStatus() == null || p.getStatus() != 1)
+                throw new RuntimeException("product is not available: " + p.getProductName());
+            if (p.getAuditStatus() == null || p.getAuditStatus() != 1)
+                throw new RuntimeException("product not approved: " + p.getProductName());
+            if (p.getIsPresale() != null && p.getIsPresale() == 1)
+                throw new RuntimeException("presale product cannot be ordered directly: " + p.getProductName());
             BigDecimal itemPrice = item.getPrice() != null ? item.getPrice() : p.getPrice();
             totalAmount = totalAmount.add(itemPrice.multiply(new BigDecimal(item.getQuantity())));
             totalQty += item.getQuantity();
         }
 
-        // 1. 先算会员折扣
+        // 1. 鍏堢畻浼氬憳鎶樻墸
         SysUser currentUser = userMapper.selectById(userId);
         BigDecimal memberDiscountRate = BigDecimal.ONE;
-        if (currentUser != null && currentUser.getMemberLevel() != null && currentUser.getMemberLevel() > 0) {
+        if (currentUser != null && currentUser.getMemberLevel() != null && currentUser.getMemberLevel() > 0
+                && currentUser.getStatus() != null && currentUser.getStatus() == 1) {
             MemberLevelConfig levelConfig = memberLevelConfigMapper.selectOne(
                     new LambdaQueryWrapper<MemberLevelConfig>().eq(MemberLevelConfig::getLevel, currentUser.getMemberLevel()));
             if (levelConfig != null && levelConfig.getDiscountRate() != null) {
@@ -112,7 +122,7 @@ public class OrderServiceImpl implements OrderService {
         BigDecimal memberDiscountAmount = totalAmount.multiply(BigDecimal.ONE.subtract(memberDiscountRate)).setScale(2, java.math.RoundingMode.HALF_UP);
         BigDecimal afterMemberDiscount = totalAmount.subtract(memberDiscountAmount);
 
-        // 2. 再减优惠券
+        // 2. 鍐嶅噺浼樻儬鍒?
         BigDecimal couponDiscountAmount = BigDecimal.ZERO;
         if (dto.getCouponId() != null) {
             UserCoupon uc = userCouponMapper.selectOne(new LambdaQueryWrapper<UserCoupon>()
@@ -124,15 +134,15 @@ public class OrderServiceImpl implements OrderService {
                 if (coupon != null && Integer.valueOf(1).equals(coupon.getStatus())) {
                     String couponType = coupon.getType();
                     if ("full_reduce".equals(couponType)) {
-                        // 满减券
+                        // 婊″噺鍒?
                         if (afterMemberDiscount.compareTo(coupon.getMinAmount()) >= 0) {
                             couponDiscountAmount = coupon.getFaceValue();
                         }
                     } else if ("discount".equals(couponType)) {
-                        // 折扣券
+                        // 鎶樻墸鍒?
                         couponDiscountAmount = afterMemberDiscount.multiply(BigDecimal.ONE.subtract(coupon.getFaceValue().divide(new BigDecimal("10"), 2, java.math.RoundingMode.HALF_UP))).setScale(2, java.math.RoundingMode.HALF_UP);
                     } else {
-                        // 其他类型（new_user, general等）直接减面值
+                        // 鍏朵粬绫诲瀷锛坣ew_user, general绛夛級鐩存帴鍑忛潰鍊?
                         couponDiscountAmount = coupon.getFaceValue();
                     }
                     uc.setStatus("used");
@@ -142,7 +152,7 @@ public class OrderServiceImpl implements OrderService {
             }
         }
 
-        // 总优惠 = 会员折扣 + 优惠券
+        // 鎬讳紭鎯?= 浼氬憳鎶樻墸 + 浼樻儬鍒?
         BigDecimal totalDiscount = memberDiscountAmount.add(couponDiscountAmount);
         BigDecimal payAmount = totalAmount.subtract(totalDiscount);
         if (payAmount.compareTo(BigDecimal.ZERO) < 0) payAmount = BigDecimal.ZERO;
@@ -178,7 +188,7 @@ public class OrderServiceImpl implements OrderService {
             oi.setIsComment(0); oi.setCreateTime(LocalDateTime.now());
             orderItemMapper.insert(oi);
 
-            // Bug #33/#35 fix: 原子UPDATE扣库存
+            // Bug #33/#35 fix: 鍘熷瓙UPDATE鎵ｅ簱瀛?
             int affected = productMapper.deductStock(item.getProductId(), item.getQuantity());
             if (affected == 0) {
                 throw new RuntimeException("out of stock: " + p.getProductName());
@@ -206,11 +216,11 @@ public class OrderServiceImpl implements OrderService {
         orderLogMapper.insert(log);
 
         Map<String, Object> result = new java.util.HashMap<>();
-        result.put("orderId", String.valueOf(order.getId()));  // 返回字符串避免JS精度丢失
+        result.put("orderId", String.valueOf(order.getId()));  // 杩斿洖瀛楃涓查伩鍏岼S绮惧害涓㈠け
         result.put("orderNo", orderNo);
-        result.put("total", payAmount);  // 返回折后价（会员折扣+优惠券）
-        result.put("originalTotal", totalAmount);  // 原价
-        result.put("discount", totalDiscount);  // 总优惠
+        result.put("total", payAmount);  // 杩斿洖鎶樺悗浠凤紙浼氬憳鎶樻墸+浼樻儬鍒革級
+        result.put("originalTotal", totalAmount);  // 鍘熶环
+        result.put("discount", totalDiscount);  // 鎬讳紭鎯?
         return result;
     }
 
@@ -218,7 +228,7 @@ public class OrderServiceImpl implements OrderService {
     public Page<OrderVO> list(Integer pageNum, Integer pageSize, Integer status) {
         LambdaQueryWrapper<OrderInfo> qw = new LambdaQueryWrapper<OrderInfo>()
                 .eq(OrderInfo::getUserId, UserContext.getUserId())
-                .ne(OrderInfo::getOrderStatus, 4); // 排除已取消订单
+                .ne(OrderInfo::getOrderStatus, 4); // 鎺掗櫎宸插彇娑堣鍗?
         if (status != null) qw.eq(OrderInfo::getOrderStatus, status);
         qw.orderByDesc(OrderInfo::getCreateTime);
         Page<OrderInfo> page = orderInfoMapper.selectPage(new Page<>(pageNum, pageSize), qw);
@@ -284,9 +294,9 @@ public class OrderServiceImpl implements OrderService {
     public void pay(Long id) {
         OrderInfo o = orderInfoMapper.selectById(id);
         if (o == null || !o.getUserId().equals(UserContext.getUserId())) throw new RuntimeException("order not found");
-        // Bug #22 fix: 支付幂等
+        // Bug #22 fix: 鏀粯骞傜瓑
         if (o.getOrderStatus() == 1) { return; }
-        if (o.getOrderStatus() != 0) throw new RuntimeException("订单状态不允许支付");
+        if (o.getOrderStatus() != 0) throw new RuntimeException("璁㈠崟鐘舵€佷笉鍏佽鏀粯");
         int updated = orderInfoMapper.update(null,
                 new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<OrderInfo>()
                         .set(OrderInfo::getOrderStatus, 1).set(OrderInfo::getPayType, 1)
@@ -315,8 +325,8 @@ public class OrderServiceImpl implements OrderService {
     public void cancel(Long id) {
         OrderInfo o = orderInfoMapper.selectById(id);
         if (o == null || !o.getUserId().equals(UserContext.getUserId())) throw new RuntimeException("order not found");
-        if (o.getOrderStatus() != 0 && o.getOrderStatus() != 1) throw new RuntimeException("只能取消未发货的订单");
-        // 回滚库存
+        if (o.getOrderStatus() != 0 && o.getOrderStatus() != 1) throw new RuntimeException("鍙兘鍙栨秷鏈彂璐х殑璁㈠崟");
+        // 鍥炴粴搴撳瓨
         List<OrderItem> items = orderItemMapper.selectList(new LambdaQueryWrapper<OrderItem>().eq(OrderItem::getOrderId, id));
         for (OrderItem item : items) {
             Product p = productMapper.selectById(item.getProductId());
@@ -330,25 +340,30 @@ public class OrderServiceImpl implements OrderService {
         o.setCancelTime(LocalDateTime.now());
         orderInfoMapper.updateById(o);
 
-        // 返还优惠券（删除使用记录，让用户可以重新领取）
+        // Bug #8 fix: 返还优惠券——仅当订单使用了优惠券且状态为"used"时恢复
         if (o.getCouponId() != null) {
-            userCouponMapper.delete(new LambdaQueryWrapper<UserCoupon>()
+            UserCoupon uc = userCouponMapper.selectOne(new LambdaQueryWrapper<UserCoupon>()
                     .eq(UserCoupon::getUserId, o.getUserId())
                     .eq(UserCoupon::getCouponId, o.getCouponId())
                     .eq(UserCoupon::getStatus, "used"));
-            // 回退优惠券领取数
-            couponMapper.update(null, new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<Coupon>()
-                    .setSql("taken_count = GREATEST(taken_count - 1, 0)").eq(Coupon::getId, o.getCouponId()));
+            if (uc != null) {
+                uc.setStatus("unused");
+                uc.setUseTime(null);
+                userCouponMapper.updateById(uc);
+                // 回退优惠券领取数
+                couponMapper.update(null, new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<Coupon>()
+                        .setSql("taken_count = GREATEST(taken_count - 1, 0)").eq(Coupon::getId, o.getCouponId()));
+            }
         }
 
-        // 已支付的订单标记退款
+        // 宸叉敮浠樼殑璁㈠崟鏍囪閫€娆?
         PaymentInfo pay = paymentInfoMapper.selectOne(
                 new LambdaQueryWrapper<PaymentInfo>().eq(PaymentInfo::getOrderId, o.getId()));
         if (pay != null && pay.getPayStatus() == 1) {
             pay.setPayStatus(3);
             paymentInfoMapper.updateById(pay);
 
-            // 会员卡支付的订单，退款到余额
+            // 浼氬憳鍗℃敮浠樼殑璁㈠崟锛岄€€娆惧埌浣欓
             if (o.getPayType() != null && o.getPayType() == 3) {
                 SysUser user = userMapper.selectById(o.getUserId());
                 if (user != null) {
@@ -358,7 +373,7 @@ public class OrderServiceImpl implements OrderService {
                 }
             }
 
-            // 扣除该订单获得的积分
+            // 鎵ｉ櫎璇ヨ鍗曡幏寰楃殑绉垎
             BigDecimal paidAmount = o.getPayAmount() != null ? o.getPayAmount() : o.getTotalAmount();
             SysUser paidUser = userMapper.selectById(o.getUserId());
             int memberLevel = paidUser != null && paidUser.getMemberLevel() != null ? paidUser.getMemberLevel() : 0;
@@ -371,15 +386,16 @@ public class OrderServiceImpl implements OrderService {
             int deductPoints = paidAmount.intValue() * pointsRate;
             if (deductPoints > 0) {
                 MemberPoint mp = memberPointMapper.selectById(o.getUserId());
-                if (mp != null) {
-                    mp.setAvailablePoint(Math.max(0, mp.getAvailablePoint() - deductPoints));
-                    mp.setTotalPoint(Math.max(0, mp.getTotalPoint() - deductPoints));
+                if (mp != null && mp.getAvailablePoint() != null) {
+                    int actualDeduct = Math.min(deductPoints, mp.getAvailablePoint());
+                    mp.setAvailablePoint(mp.getAvailablePoint() - actualDeduct);
+                    mp.setTotalPoint(Math.max(0, mp.getTotalPoint() - actualDeduct));
                     memberPointMapper.updateById(mp);
 
                     PointLog log = new PointLog();
                     log.setUserId(o.getUserId()); log.setType("refund");
-                    log.setPoint(-deductPoints); log.setBalance(mp.getAvailablePoint());
-                    log.setRemark("取消订单扣除积分");
+                    log.setPoint(-actualDeduct); log.setBalance(mp.getAvailablePoint());
+                    log.setRemark("\u53d6\u6d88\u8ba2\u5355\u6263\u9664\u79ef\u5206");
                     log.setCreateTime(LocalDateTime.now());
                     pointLogMapper.insert(log);
                 }

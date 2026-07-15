@@ -1,4 +1,4 @@
-package com.freshtrace.unified.service.impl;
+﻿package com.freshtrace.unified.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -35,6 +35,15 @@ public class AfterSalesServiceImpl implements AfterSalesService {
         if (order == null || !order.getUserId().equals(UserContext.getUserId())) throw new RuntimeException("order not found");
         if (order.getOrderStatus() != 1 && order.getOrderStatus() != 2 && order.getOrderStatus() != 3) {
             throw new RuntimeException("order status not eligible for after-sales");
+
+        // Bug #3 fix: check for existing after-sales on the same order item
+        long existingCount = afterSalesOrderMapper.selectCount(new LambdaQueryWrapper<AfterSalesOrder>()
+                .eq(AfterSalesOrder::getOrderItemId, dto.getOrderItemId())
+                .in(AfterSalesOrder::getStatus, 0, 1, 2, 3, 4, 5, 6));
+        if (existingCount > 0) {
+            throw new RuntimeException("该商品已有进行中的售后申请");
+        }
+
         }
 
         String asNo = "AS" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS"));
