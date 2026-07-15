@@ -15,6 +15,23 @@ axios.interceptors.request.use(config => {
   return config
 })
 
+// 全局业务层拦截器:HTTP 2xx 但 body code != 200 的"假成功"自动 reject
+// 根因:后端 @RestControllerAdvice 把所有异常包成 Result.error() 但 HTTP 状态仍是 200
+// 直接 await axios.post() 不写 catch 的话会当成功 —— 这是 tmdd233 add 地址 bug 的根因
+axios.interceptors.response.use(
+  res => {
+    const data = res.data
+    // 只对 Result<T> 包装结构(code + message + data)生效
+    if (data && typeof data === 'object' && 'code' in data && data.code !== 200) {
+      // /auth/* 留给 auth store 自己处理(login.vue 有详细错误分支)
+      if (res.config?.url?.includes('/auth/')) return res
+      return Promise.reject(new Error(data.message || `业务异常 code=${data.code}`))
+    }
+    return res
+  },
+  err => Promise.reject(err)  // HTTP 错误继续往下传
+)
+
 let isRefreshing = false
 let refreshQueue = []
 

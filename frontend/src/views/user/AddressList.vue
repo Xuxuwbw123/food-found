@@ -138,7 +138,10 @@ async function handleSave() {
       receiverName: form.receiverName, receiverPhone: form.receiverPhone,
       province: form.province, city: form.city, district: form.district,
       detailAddress: form.detailAddress, postalCode: form.postalCode,
-      isDefault: form.isDefault
+      // 后端 UserAddress.isDefault 是 Integer 不是 Boolean,前端 el-checkbox v-model 给的是 Boolean,
+      // 必须显式转 0/1,否则 Jackson 反序列化失败 -> 业务异常 -> HTTP 200 但 body code=500
+      // -> 前端没 catch 就当成功 -> 实际后端啥也没存
+      isDefault: form.isDefault ? 1 : 0
     }
     if (form.id) {
       await axios.put('/api/address/update', data)
