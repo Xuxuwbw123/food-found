@@ -81,6 +81,14 @@ public class AuthInterceptor implements HandlerInterceptor {
         request.setAttribute("userType", userType);
         UserContext.setUserId(userId);
         UserContext.setUserType(userType);
+
+        // Bug #29 fix: 管理员接口必须由管理员(userType=3)访问
+        boolean isAdminApi = url.startsWith("/api/admin/") || url.startsWith("/admin/");
+        if (isAdminApi && (userType == null || userType != 3)) {
+            writeError(response, 403, "权限不足，仅管理员可访问");
+            return false;
+        }
+
         return true;
     }
 
