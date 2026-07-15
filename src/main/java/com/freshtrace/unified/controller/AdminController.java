@@ -731,9 +731,42 @@ public class AdminController {
     @PutMapping("/trace/audit/approve/{id}")
     public Result<?> traceAuditApprove(@PathVariable Long id) {
         traceabilityMapper.updateDeletedStatus(id, 0); // ensure deleted=0
-        Traceability t = new Traceability(); t.setId(id); t.setAuditStatus(1);
+        Traceability t = traceService.getById(id);
+        if (t == null) return Result.error(404, "溯源批次不存在");
+        t.setAuditStatus(1);
         traceService.updateById(t);
-        return Result.success("审核通过", null);
+
+        // 兜底: 审核通过时,如果该批次还没关联商品,自动创建一个
+        // 根因: 农户端 Dashboard.addTrace 只在 productForm.price > 0 时才调 productPublish
+        //       农户没填价格就不会创建商品 -> 批次通过后商品管理里看不到,体验断裂
+        // 兜底: 批次审核通过 = 农户已有可卖商品,自动建一个默认商品(status=1 上架,auditStatus=1 已通过)
+        // 已有就跳过,避免重复创建
+        long existingCount = productService.count(new LambdaQueryWrapper<Product>()
+                .eq(Product::getTraceId, id).eq(Product::getDeleted, 0));
+        boolean created = false;
+        if (existingCount == 0) {
+            Product p = new Product();
+            p.setProductName(t.getProductName());
+            p.setProductNo("P" + System.currentTimeMillis());
+            p.setFarmerId(t.getFarmerId());
+            p.setCategoryId(12L);  // 默认分类(没分类数据,留待商户后续编辑)
+            p.setMainImage("/images/products/default.png");
+            p.setOriginPlace(t.getOriginPlace() != null ? t.getOriginPlace() : "");
+            p.setDescription("溯源批次 " + t.getBatchNo() + " 审核通过自动创建");
+            p.setTraceId(id);
+            p.setIsTraceable(1);
+            p.setUnit("kg");
+            p.setPrice(new java.math.BigDecimal("0"));
+            p.setStock(0);
+            p.setStatus(1);     // 审核已通过,直接上架
+            p.setAuditStatus(1);
+            p.setDeleted(0);
+            p.setCreateTime(LocalDateTime.now());
+            productService.save(p);
+            created = true;
+        }
+
+        return Result.success(created ? "审核通过，已自动创建商品" : "审核通过", null);
     }
 
     @PutMapping("/trace/audit/reject/{id}")
