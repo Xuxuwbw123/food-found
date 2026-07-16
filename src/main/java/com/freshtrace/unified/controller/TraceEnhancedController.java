@@ -1,4 +1,4 @@
-﻿package com.freshtrace.unified.controller;
+package com.freshtrace.unified.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.freshtrace.unified.common.Result;
@@ -73,7 +73,7 @@ public class TraceEnhancedController {
         if (count <= 0 || count > 500) return Result.error(400, "鏁伴噺鑼冨洿1-500");
 
         Traceability trace = traceService.getById(traceId);
-        if (trace == null) return Result.error(404, "婧簮鎵规涓嶅瓨鍦?);
+        if (trace == null) return Result.error(404, "溯源批次不存在");
 
         String baseUrl = body.containsKey("baseUrl") ? body.get("baseUrl").toString() : "http://localhost:8088";
 

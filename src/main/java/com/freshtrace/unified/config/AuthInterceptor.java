@@ -1,4 +1,4 @@
-﻿package com.freshtrace.unified.config;
+package com.freshtrace.unified.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.freshtrace.unified.common.Result;
@@ -70,7 +70,7 @@ public class AuthInterceptor implements HandlerInterceptor {
 
         String token = authHeader.substring(7);
         if (!jwtUtils.validateToken(token)) {
-            writeError(response, 401, "鐧诲綍宸茶繃鏈燂紝璇烽噸鏂扮櫥褰?);
+            writeError(response, 401, "鐧诲綍宸茶繃鏈燂紝璇烽噸鏂扮櫥褰?");
             return false;
         }
 

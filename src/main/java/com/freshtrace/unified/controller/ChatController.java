@@ -1,4 +1,4 @@
-﻿package com.freshtrace.unified.controller;
+package com.freshtrace.unified.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
@@ -41,7 +41,7 @@ public class ChatController {
     @Autowired private OrderInfoMapper orderInfoMapper;
     @Autowired private SysConfigService configService;
 
-    private static final Long getAdminId() = 1000000000000001L;
+    private static final Long ADMIN_ID = 1000000000000001L;
     private static final int MAX_AI_ROUNDS = 10;
 
     private String getAiConfig(String key, String defaultValue) {
@@ -54,22 +54,21 @@ public class ChatController {
     private static final Map<Long, Integer> aiRoundCount = new ConcurrentHashMap<>();
 
     // AI绯荤粺鎻愮ず璇?
-    private static final String AI_SYSTEM_PROMPT = "浣犳槸鍐滆嚮婧簮鐢靛晢骞冲彴鐨勬櫤鑳藉鏈嶅姪鎵嬨€備綘鍙兘鍥炵瓟浠ヤ笅绠€鍗曢棶棰橈細\n" +
-            "1. 鍙戣揣鏃堕棿锛氫竴鑸笅鍗曞悗1-3涓伐浣滄棩鍐呭彂璐n" +
-            "2. 棰勮閫佽揪鏃堕棿锛氬彂璐у悗2-5澶╁埌杈撅紝鍏蜂綋鐪嬪湴鍖篭n" +
-            "3. 鐗╂祦鏌ヨ锛氳鍒癨"鎴戠殑璁㈠崟\"椤甸潰鏌ョ湅鐗╂祦淇℃伅\n" +
-            "4. 鍟嗗搧淇℃伅锛氬彲鍒板晢鍝佽鎯呴〉鏌ョ湅\n" +
-            "5. 璐︽埛闂锛氫細鍛樸€佺Н鍒嗐€佷紭鎯犲埜鐨勫熀鏈鏄嶾n\n" +
-            "涓ユ牸瑙勫垯锛歕n" +
-            "- 鍙洖绛斾笂杩扮畝鍗曢棶棰橈紝鍥炵瓟涓嶈秴杩?0瀛梊n" +
-            "- 鐢ㄦ埛闂笌涓氬姟鏃犲叧鐨勯棶棰橈紙闂茶亰銆佹斂娌汇€佸叾浠栧钩鍙扮瓑锛夛紝鍥炲锛歕"鎶辨瓑锛屾垜鍙兘澶勭悊涓庤鍗曠浉鍏崇殑闂銆俓"\n" +
-            "- 娑夊強浠ヤ笅浠讳綍鍐呭锛屽繀椤诲洖澶嶏細\"杩欎釜闂闇€瑕佷汉宸ュ鏈嶄负鎮ㄥ鐞嗭紝姝ｅ湪涓烘偍杞帴...\" 鐒跺悗鍔犱笂 [TRANSFER_TO_HUMAN]锛歕n" +
-            "  * 閫€娆俱€侀€€璐с€佹崲璐n" +
-            "  * 璁㈠崟寮傚父銆佸晢鍝佽川閲忛棶棰榎n" +
-            "  * 鎶曡瘔銆佸樊璇刓n" +
-            "  * 鍏蜂綋璁㈠崟鎿嶄綔锛堝彇娑堛€佷慨鏀瑰湴鍧€绛夛級\n" +
-            "  * 鐢ㄦ埛琛ㄨ揪涓嶆弧鎴栨儏缁猏n" +
-            "- 涓嶈闂茶亰锛屼笉瑕佹墿灞曡瘽棰橈紝涓嶈涓诲姩鎻愰棶";
+    private static final String AI_SYSTEM_PROMPT = "你是一个电商平台的智能客服助手。请简洁回答用户问题。\n" +
+            "1. 发货时间：一般下单后1-3个工作日内发货\n" +
+            "2. 预计送达时间：发货后2-5天到达，具体看地区\n" +
+            "3. 物流查询：请到\"我的订单\"页面查看物流信息\n" +
+            "4. 商品信息：可到商品详情页查看\n" +
+            "5. 账号问题：会员、积分、优惠券的基本说明\n" +
+            "严格规则：\n" +
+            "- 只回答上述简单问题，回答不超过50字\n" +
+            "- 用户问与业务无关的问题（闲聊、政治、其他平台等），回复：\"抱歉，我只能处理与订单相关的问题。\"\n" +
+            "- 涉及以下任何内容，必须回复：\"这个问题需要人工客服为您处理，正在为您转接...\" 然后加上 [TRANSFER_TO_HUMAN]：\n" +
+            "  * 退款、退货、换货\n" +
+            "  * 订单异常、商品质量问题\n" +
+            "  * 投诉、差评\n" +
+            "  * 具体订单操作（取消、修改地址等）\n" +
+            "  * 任何需要人工客服介入的复杂问题";
 
     // ============ 鐢ㄦ埛绔細鍙戦€佹秷鎭?============
     @PostMapping("/api/chat/send")
@@ -84,7 +83,7 @@ public class ChatController {
         }
 
         // 淇濆瓨鐢ㄦ埛娑堟伅
-        Long toUserId = useAI ? 0L : (findChatAdmin(userId) != null ? findChatAdmin(userId) : getAdminId());
+        Long toUserId = useAI ? 0L : (findChatAdmin(userId) != null ? findChatAdmin(userId) : ADMIN_ID);
         ChatMessage userMsg = new ChatMessage();
         userMsg.setFromUserId(userId);
         userMsg.setToUserId(toUserId);
@@ -149,7 +148,7 @@ public class ChatController {
         aiRoundCount.remove(userId);
 
         Long adminId = findChatAdmin(userId);
-        if (adminId == null) adminId = getAdminId();
+        if (adminId == null) adminId = ADMIN_ID;
 
         ChatMessage msg = new ChatMessage();
         msg.setFromUserId(userId);
@@ -161,7 +160,7 @@ public class ChatController {
         chatService.save(msg);
 
         notifyAdminNewUser(userId);
-        return Result.success("宸茶浆鎺ヤ汉宸ュ鏈?);
+        return Result.success("宸茶浆鎺ヤ汉宸ュ鏈?");
     }
 
     // ============ 绠＄悊鍛樼锛氬彂閫佹秷鎭?============
@@ -200,7 +199,7 @@ public class ChatController {
         Long adminId = UserContext.getUserId();
         String orderIdStr = body.get("orderId").toString().trim();
         Long userId = Long.valueOf(body.get("userId").toString());
-        String reason = (String) body.getOrDefault("reason", "瀹㈡湇澶勭悊閫€娆?);
+        String reason = (String) body.getOrDefault("reason", "瀹㈡湇澶勭悊閫€娆?");
 
         // 鏀寔璁㈠崟鍙凤紙FD寮€澶达級鎴栬鍗旾D锛堢函鏁板瓧锛?
         OrderInfo order;
@@ -211,7 +210,7 @@ public class ChatController {
             order = orderInfoService.getById(Long.valueOf(orderIdStr));
         }
         if (order == null) return Result.error(404, "璁㈠崟涓嶅瓨鍦紝璇锋鏌ヨ鍗曞彿");
-        if (order.getOrderStatus() == 4) return Result.error(400, "璁㈠崟宸插彇娑?);
+        if (order.getOrderStatus() == 4) return Result.error(400, "订单已取消");
 
         BigDecimal refundAmount = order.getPayAmount() != null ? order.getPayAmount() : order.getTotalAmount();
 
@@ -270,7 +269,7 @@ public class ChatController {
                 PointLog log = new PointLog();
                 log.setUserId(userId); log.setType("refund");
                 log.setPoint(-deductPoints); log.setBalance(mp.getAvailablePoint());
-                log.setRemark("瀹㈡湇閫€娆炬墸闄ょН鍒?);
+                log.setRemark("客服退款扣除积分");
                 log.setCreateTime(LocalDateTime.now());
                 pointLogService.save(log);
             }
@@ -288,7 +287,7 @@ public class ChatController {
         afterSales.setRefundAmount(refundAmount);
         afterSales.setStatus(1); // 宸插鏍?
         afterSales.setAdminId(adminId);
-        afterSales.setAdminRemark("瀹㈡湇閫€娆惧鐞?);
+        afterSales.setAdminRemark("客服退款处理");
         afterSales.setApplyTime(LocalDateTime.now());
         afterSales.setAuditTime(LocalDateTime.now());
         afterSales.setCreateTime(LocalDateTime.now());
@@ -305,8 +304,8 @@ public class ChatController {
         // 8. 鍙戦€佹秷鎭€氱煡鐢ㄦ埛
         String refundMsg = String.format("銆愰€€娆炬垚鍔熴€慭n璁㈠崟鍙凤細%s\n閫€娆鹃噾棰濓細楼%s\n閫€娆炬柟寮忥細%s\n%s",
                 order.getOrderNo(), refundAmount,
-                order.getPayType() == 3 ? "閫€鍥炰細鍛樺崱浣欓" : "鍘熻矾閫€鍥?,
-                order.getPayType() == 3 ? "閫€娆惧凡閫€鍥炴偍鐨勪細鍛樺崱浣欓锛岃鏌ユ敹銆? : "閫€娆惧皢鍦?-3涓伐浣滄棩鍐呭師璺€€鍥炪€?);
+                order.getPayType() == 3 ? "退回会员卡余额" : "原路退回",
+                order.getPayType() == 3 ? "退款已退回您的会员卡余额，请查收。" : "退款将在1-3个工作日内原路退回。");
         ChatMessage msg = new ChatMessage();
         msg.setFromUserId(adminId); msg.setToUserId(userId);
         msg.setContent(refundMsg); msg.setMsgType("refund");
@@ -318,7 +317,7 @@ public class ChatController {
         push.put("message", buildMessageVO(msg, adminId));
         ChatWebSocketHandler.sendToUser(userId, push);
 
-        return Result.success("閫€娆炬垚鍔?, Map.of("refundAmount", refundAmount));
+        return Result.success("退款成功", Map.of("refundAmount", refundAmount));
     }
 
     // ============ 鐢ㄦ埛绔細鑾峰彇鑱婂ぉ璁板綍 ============
@@ -326,7 +325,7 @@ public class ChatController {
     public Result<?> userMessages() {
         Long userId = UserContext.getUserId();
         Long adminId = findChatAdmin(userId);
-        final Long targetAdminId = adminId != null ? adminId : getAdminId();
+        final Long targetAdminId = adminId != null ? adminId : ADMIN_ID;
 
         // 鏍囪宸茶
         chatService.update(new LambdaUpdateWrapper<ChatMessage>()
@@ -530,7 +529,7 @@ public class ChatController {
     public Result<?> userUnread() {
         Long userId = UserContext.getUserId();
         Long adminId = findChatAdmin(userId);
-        if (adminId == null) adminId = getAdminId();
+        if (adminId == null) adminId = ADMIN_ID;
         long count = chatService.count(new LambdaQueryWrapper<ChatMessage>()
                 .eq(ChatMessage::getFromUserId, adminId)
                 .eq(ChatMessage::getToUserId, userId)
@@ -646,7 +645,7 @@ public class ChatController {
         push.put("userId", userId);
         push.put("nickname", nickname);
         push.put("message", nickname + " 璇锋眰浜哄伐瀹㈡湇");
-        ChatWebSocketHandler.sendToUser(getAdminId(), push);
+        ChatWebSocketHandler.sendToUser(ADMIN_ID, push);
     }
 
     private Long findChatAdmin(Long userId) {
@@ -677,11 +676,11 @@ public class ChatController {
     private String getStatusText(Integer status) {
         if (status == null) return "鏈煡";
         switch (status) {
-            case 0: return "寰呬粯娆?;
-            case 1: return "寰呭彂璐?;
-            case 2: return "宸插彂璐?;
-            case 3: return "宸插畬鎴?;
-            case 4: return "宸插彇娑?;
+            case 0: return "待付款";
+            case 1: return "待发货";
+            case 2: return "已发货";
+            case 3: return "已完成";
+            case 4: return "已取消";
             default: return "鏈煡";
         }
     }

@@ -1,4 +1,4 @@
-﻿package com.freshtrace.unified.config;
+package com.freshtrace.unified.config;
 
 import jakarta.servlet.Filter;
 import jakarta.servlet.FilterChain;

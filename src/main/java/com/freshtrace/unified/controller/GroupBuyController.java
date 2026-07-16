@@ -1,4 +1,4 @@
-﻿package com.freshtrace.unified.controller;
+package com.freshtrace.unified.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.freshtrace.unified.common.Result;
@@ -62,11 +62,11 @@ public class GroupBuyController {
     public Result<?> join(@PathVariable Long id) {
         Long userId = UserContext.getUserId();
         GroupBuy gb = groupBuyService.getById(id);
-        if (gb == null || gb.getStatus() != 1) return Result.error(404, "鎷煎洟涓嶅瓨鍦?);
+        if (gb == null || gb.getStatus() != 1) return Result.error(404, "鎷煎洟涓嶅瓨鍦?");
 
         long count = recordService.count(new LambdaQueryWrapper<GroupBuyRecord>()
                 .eq(GroupBuyRecord::getGroupBuyId, id).eq(GroupBuyRecord::getUserId, userId));
-        if (count > 0) return Result.error(400, "宸插弬涓?);
+        if (count > 0) return Result.error(400, "宸插弬涓?");
 
         GroupBuyRecord record = new GroupBuyRecord();
         record.setGroupBuyId(id); record.setUserId(userId);
@@ -85,7 +85,7 @@ public class GroupBuyController {
                     SysNotice notice = new SysNotice();
                     notice.setUserId(r.getUserId()); notice.setNoticeType("group_buy");
                     notice.setTitle("鎷煎洟鎴愬姛");
-                    notice.setContent("鎮ㄥ弬涓庣殑鎷煎洟宸叉垚鍔燂紝鍟嗗搧灏嗗敖蹇彂鍑?);
+                    notice.setContent("鎮ㄥ弬涓庣殑鎷煎洟宸叉垚鍔燂紝鍟嗗搧灏嗗敖蹇彂鍑?");
                     notice.setIsRead(0); notice.setCreateTime(LocalDateTime.now());
                     noticeService.save(notice);
                 } catch (Exception ignored) {}

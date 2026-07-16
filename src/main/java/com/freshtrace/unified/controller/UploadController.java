@@ -1,4 +1,4 @@
-﻿package com.freshtrace.unified.controller;
+package com.freshtrace.unified.controller;
 
 import com.freshtrace.unified.common.Result;
 import com.freshtrace.unified.entity.TraceImage;
@@ -42,10 +42,10 @@ public class UploadController {
         String ext = getExtension(file.getOriginalFilename()).toLowerCase();
         if (!ALLOWED_EXT.contains(ext)) return "鍙敮鎸佸浘鐗囨牸寮忥細jpg/jpeg/png/gif/webp/bmp";
         String ct = file.getContentType();
-        if (ct == null || !ALLOWED_MIME.contains(ct.toLowerCase())) return "MIME绫诲瀷涓嶅悎娉?;
+        if (ct == null || !ALLOWED_MIME.contains(ct.toLowerCase())) return "MIME类型不合法";
         byte[] header = new byte[8];
-        try (InputStream is = file.getInputStream()) { if (is.read(header) < 4) return "鏂囦欢涓虹┖"; }
-        if (!isValidImageMagic(header)) return "鏂囦欢鍐呭闈炲浘鐗?;
+        try (InputStream is = file.getInputStream()) { if (is.read(header) < 4) return "文件为空"; }
+        if (!isValidImageMagic(header)) return "文件内容非图片";
         return null;
     }
 
@@ -87,3 +87,5 @@ public class UploadController {
         if (dot < 0) return ".png";
         String ext = fn.substring(dot).toLowerCase();
         if (!ALLOWED_EXT.contains(ext)) return ".png";
+    }
+}

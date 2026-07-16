@@ -1,4 +1,4 @@
-﻿package com.freshtrace.unified.service.impl;
+package com.freshtrace.unified.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -227,10 +227,12 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public Page<OrderVO> list(Integer pageNum, Integer pageSize, Integer status) {
         LambdaQueryWrapper<OrderInfo> qw = new LambdaQueryWrapper<OrderInfo>()
-                .eq(OrderInfo::getUserId, UserContext.getUserId())
-                .ne(OrderInfo::getOrderStatus, 4); // 鎺掗櫎宸插彇娑堣鍗?
+                .eq(OrderInfo::getUserId, UserContext.getUserId());
+        // 默认排除已取消订单，除非明确查询取消状态
+        if (status == null || status != 4) {
+            qw.ne(OrderInfo::getOrderStatus, 4);
+        }
         if (status != null) qw.eq(OrderInfo::getOrderStatus, status);
-        qw.orderByDesc(OrderInfo::getCreateTime);
         Page<OrderInfo> page = orderInfoMapper.selectPage(new Page<>(pageNum, pageSize), qw);
         Page<OrderVO> result = new Page<>(pageNum, pageSize, page.getTotal());
         result.setRecords(page.getRecords().stream().map(o -> {

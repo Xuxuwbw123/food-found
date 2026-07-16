@@ -1,4 +1,4 @@
-﻿package com.freshtrace.unified.controller;
+package com.freshtrace.unified.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
@@ -37,7 +37,7 @@ public class FarmerController {
     @GetMapping("/detail/{id}")
     public Result<?> farmerDetail(@PathVariable Long id) {
         Farmer f = farmerService.getById(id);
-        if (f == null || f.getDeleted() == 1) return Result.error(404, "鍐滄埛涓嶅瓨鍦?);
+        if (f == null || f.getDeleted() == 1) return Result.error(404, "鍐滄埛涓嶅瓨鍦?");
         return Result.success(f);
     }
 
@@ -80,7 +80,7 @@ public class FarmerController {
             fa.setFarmerId(farmer.getId()); fa.setAuditStatus(0); fa.setCreateTime(LocalDateTime.now());
             farmerAuditService.save(fa);
         }
-        return Result.success("鐢宠宸叉彁浜?, null);
+        return Result.success("鐢宠宸叉彁浜?, null");
     }
 
     @PutMapping("/update")
@@ -97,7 +97,7 @@ public class FarmerController {
             @RequestParam(required = false) Integer status) {
         Long userId = (Long) request.getAttribute("userId");
         Farmer f = farmerService.getOne(new LambdaQueryWrapper<Farmer>().eq(Farmer::getUserId, userId));
-        if (f == null) return Result.error(403, "闈炲啘鎴?);
+        if (f == null) return Result.error(403, "闈炲啘鎴?");
 
         List<Long> orderIds = orderItemService.list(new LambdaQueryWrapper<OrderItem>()
                 .eq(OrderItem::getFarmerId, f.getId()))
@@ -119,9 +119,9 @@ public class FarmerController {
     public Result<?> farmerOrderDetail(@PathVariable Long id, HttpServletRequest request) {
         Long userId = (Long) request.getAttribute("userId");
         Farmer f = farmerService.getOne(new LambdaQueryWrapper<Farmer>().eq(Farmer::getUserId, userId));
-        if (f == null) return Result.error(403, "闈炲啘鎴?);
+        if (f == null) return Result.error(403, "闈炲啘鎴?");
         OrderInfo order = orderService.getById(id);
-        if (order == null) return Result.error(404, "璁㈠崟涓嶅瓨鍦?);
+        if (order == null) return Result.error(404, "璁㈠崟涓嶅瓨鍦?");
         order.setItems(orderItemService.list(new LambdaQueryWrapper<OrderItem>().eq(OrderItem::getOrderId, id)));
         order.setLogs(orderLogService.list(new LambdaQueryWrapper<OrderLog>().eq(OrderLog::getOrderId, id)));
         return Result.success(order);
@@ -131,7 +131,7 @@ public class FarmerController {
     public Result<?> deliverOrder(@PathVariable Long id, @RequestBody Map<String, String> body, HttpServletRequest request) {
         Long userId = (Long) request.getAttribute("userId");
         Farmer f = farmerService.getOne(new LambdaQueryWrapper<Farmer>().eq(Farmer::getUserId, userId));
-        if (f == null) return Result.error(403, "闈炲啘鎴?);
+        if (f == null) return Result.error(403, "闈炲啘鎴?");
         OrderInfo order = orderService.getById(id);
         if (order == null || order.getOrderStatus() != 1) return Result.error(400, "璁㈠崟鐘舵€佷笉鍏佽鍙戣揣");
         order.setOrderStatus(2); order.setLogisticsNo(body.get("logisticsNo"));
@@ -149,7 +149,7 @@ public class FarmerController {
     public Result<?> farmerProductList(HttpServletRequest request) {
         Long userId = (Long) request.getAttribute("userId");
         Farmer f = farmerService.getOne(new LambdaQueryWrapper<Farmer>().eq(Farmer::getUserId, userId));
-        if (f == null) return Result.error(403, "闈炲啘鎴?);
+        if (f == null) return Result.error(403, "闈炲啘鎴?");
         return Result.success(productService.list(new LambdaQueryWrapper<Product>()
                 .eq(Product::getFarmerId, f.getId()).eq(Product::getDeleted, 0).orderByDesc(Product::getCreateTime)));
     }
@@ -163,7 +163,7 @@ public class FarmerController {
         int stock = Integer.parseInt(body.get("stock").toString());
         if (stock < 0) return Result.error(400, "搴撳瓨涓嶈兘涓鸿礋");
         p.setStock(stock); productService.updateById(p);
-        return Result.success("搴撳瓨宸叉洿鏂?, null);
+        return Result.success("搴撳瓨宸叉洿鏂?, null");
     }
 
     @PutMapping("/product/changeStatus/{id}")
@@ -182,7 +182,7 @@ public class FarmerController {
     public Result<?> batchProduct(@RequestBody Map<String, Object> body, HttpServletRequest request) {
         Long userId = (Long) request.getAttribute("userId");
         Farmer f = farmerService.getOne(new LambdaQueryWrapper<Farmer>().eq(Farmer::getUserId, userId));
-        if (f == null) return Result.error(403, "闈炲啘鎴?);
+        if (f == null) return Result.error(403, "闈炲啘鎴?");
         @SuppressWarnings("unchecked")
         List<Long> ids = ((List<Number>) body.get("ids")).stream().map(Number::longValue).collect(java.util.stream.Collectors.toList());
         String action = (String) body.get("action");
@@ -202,7 +202,7 @@ public class FarmerController {
     public Result<?> farmerStatistics(HttpServletRequest request) {
         Long userId = (Long) request.getAttribute("userId");
         Farmer f = farmerService.getOne(new LambdaQueryWrapper<Farmer>().eq(Farmer::getUserId, userId));
-        if (f == null) return Result.error(403, "闈炲啘鎴?);
+        if (f == null) return Result.error(403, "闈炲啘鎴?");
 
         long productCount = productService.count(new LambdaQueryWrapper<Product>()
                 .eq(Product::getFarmerId, f.getId()).eq(Product::getDeleted, 0));
@@ -220,7 +220,7 @@ public class FarmerController {
             @RequestParam(required = false) Integer status) {
         Long userId = (Long) request.getAttribute("userId");
         Farmer f = farmerService.getOne(new LambdaQueryWrapper<Farmer>().eq(Farmer::getUserId, userId));
-        if (f == null) return Result.error(403, "闈炲啘鎴?);
+        if (f == null) return Result.error(403, "闈炲啘鎴?");
         LambdaQueryWrapper<AfterSalesOrder> qw = new LambdaQueryWrapper<AfterSalesOrder>()
                 .eq(AfterSalesOrder::getFarmerId, f.getId());
         if (status != null) qw.eq(AfterSalesOrder::getStatus, status);
@@ -232,7 +232,7 @@ public class FarmerController {
     public Result<?> auditAfterSales(@PathVariable Long id, @RequestBody Map<String, Object> body, HttpServletRequest request) {
         Long userId = (Long) request.getAttribute("userId");
         Farmer f = farmerService.getOne(new LambdaQueryWrapper<Farmer>().eq(Farmer::getUserId, userId));
-        if (f == null) return Result.error(403, "闈炲啘鎴?);
+        if (f == null) return Result.error(403, "闈炲啘鎴?");
         AfterSalesOrder aso = afterSalesService.getById(id);
         if (aso == null) return Result.error(404, "鍞悗鍗曚笉瀛樺湪");
         boolean agree = Boolean.TRUE.equals(body.get("agree"));

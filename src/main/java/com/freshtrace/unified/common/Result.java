@@ -1,4 +1,4 @@
-﻿package com.freshtrace.unified.common;
+package com.freshtrace.unified.common;
 
 import lombok.Data;
 

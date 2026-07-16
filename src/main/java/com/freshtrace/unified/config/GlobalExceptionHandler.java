@@ -1,4 +1,4 @@
-﻿package com.freshtrace.unified.config;
+package com.freshtrace.unified.config;
 
 import com.freshtrace.unified.common.Result;
 import org.springframework.web.bind.annotation.ExceptionHandler;

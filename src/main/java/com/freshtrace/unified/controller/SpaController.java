@@ -94,9 +94,6 @@ public class SpaController {
         return "forward:/index.html";
     }
 
-        return "forward:/index.html";
-    }
-
     @RequestMapping({
             "/admin/group-buy", "/admin/themes", "/admin/mystery-boxes",
             "/admin/recipes", "/admin/stock-alerts", "/admin/green-points-rules",

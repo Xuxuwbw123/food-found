@@ -1,4 +1,4 @@
-﻿package com.freshtrace.unified.controller;
+package com.freshtrace.unified.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
@@ -38,14 +38,14 @@ public class MemberPayController {
 
         OrderInfo order = orderInfoService.getById(orderId);
         if (order == null || !order.getUserId().equals(userId)) {
-            return Result.error(404, "璁㈠崟涓嶅瓨鍦?);
+            return Result.error(404, "璁㈠崟涓嶅瓨鍦?");
         }
         if (order.getOrderStatus() != 0) {
             return Result.error(400, "璁㈠崟鐘舵€佷笉鍏佽鏀粯");
         }
 
         SysUser user = userMapper.selectById(userId);
-        if (user == null) return Result.error(404, "鐢ㄦ埛涓嶅瓨鍦?);
+        if (user == null) return Result.error(404, "鐢ㄦ埛涓嶅瓨鍦?");
 
         // 浼氬憳鎶樻墸鍜屼紭鎯犲埜宸插湪涓嬪崟鏃舵墸闄わ紝鐩存帴鐢╬ayAmount
         BigDecimal payAmount = order.getPayAmount() != null ? order.getPayAmount() : order.getTotalAmount();
@@ -88,7 +88,7 @@ public class MemberPayController {
         log.setOrderStatus(1);
         log.setOperatorType(1);
         log.setOperatorId(userId);
-        log.setRemark("浼氬憳鍗′綑棰濇敮浠?楼" + payAmount);
+        log.setRemark("会员卡余额支付¥" + payAmount);
         log.setCreateTime(LocalDateTime.now());
         orderLogService.save(log);
 
@@ -115,15 +115,15 @@ public class MemberPayController {
         Long userId = UserContext.getUserId();
         OrderInfo order = orderInfoService.getById(orderId);
         if (order == null || !order.getUserId().equals(userId)) {
-            return Result.error(404, "璁㈠崟涓嶅瓨鍦?);
+            return Result.error(404, "璁㈠崟涓嶅瓨鍦?");
         }
 
         SysUser user = userMapper.selectById(userId);
-        if (user == null) return Result.error(404, "鐢ㄦ埛涓嶅瓨鍦?);
+        if (user == null) return Result.error(404, "鐢ㄦ埛涓嶅瓨鍦?");
 
         BigDecimal balance = user.getBalance() != null ? user.getBalance() : BigDecimal.ZERO;
         int memberLevel = user.getMemberLevel() != null ? user.getMemberLevel() : 0;
-        String levelName = "鏅€氱敤鎴?;
+        String levelName = "普通用户";
         BigDecimal discountRate = BigDecimal.ONE;
 
         if (memberLevel > 0) {
@@ -207,7 +207,7 @@ public class MemberPayController {
         PointLog log = new PointLog();
         log.setUserId(userId); log.setType("purchase");
         log.setPoint(points); log.setBalance(mp.getAvailablePoint());
-        log.setRemark("娑堣垂鑾峰緱绉垎锛? + pointsRate + "鍊嶏級");
+        log.setRemark("消费获得积分：" + pointsRate + "倍");
         log.setCreateTime(LocalDateTime.now());
         pointLogService.save(log);
     }
